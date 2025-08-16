@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Kripto Destekli Gelişmiş Yatırım Hesaplayıcı</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    input[type=number] { -moz-appearance: textfield; }
+    .loader { border: 2px solid #f3f3f3; border-top: 2px solid #4f46e5; border-radius: 50%; width: 16px; height: 16px; animation: spin 1s linear infinite; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .custom-checkbox:checked { background-color: #4f46e5; border-color: #4f46e5; }
+    .custom-checkbox:checked::after { content: '✓'; color: white; display: block; text-align: center; line-height: 1.25rem; font-size: 0.8rem; }
+    .best-performer { background-color: #f0fdf4; border-left: 4px solid #22c55e; }
+    .chart-container { height: 360px; width: 100%; }
+    .muted { color: #6b7280; font-size: 0.85rem; }
+    .asset-logo { width: 24px; height: 18px; border-radius: 3px; object-fit: cover; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .crypto-logo, .metal-logo { width: 24px; height: 24px; border-radius: 50%; }
+    .price-up { color: #16a34a; }
+    .price-down { color: #dc2626; }
+    .lang-btn { cursor: pointer; opacity: 0.6; transition: opacity 0.2s; border-radius: 3px; }
+    .lang-btn:hover, .lang-btn.active { opacity: 1; box-shadow: 0 0 0 2px #4f46e5; }
+    html[dir="rtl"] .asset-item label { margin-left: 0; margin-right: 0.5rem; }
+  </style>
+</head>
+<body class="bg-gray-100 text-gray-800 flex items-center justify-center min-h-screen p-4">
+  <div class="w-full max-w-5xl bg-white rounded-2xl shadow-2xl p-6 md:p-10">
+    
+    <div id="language-switcher" class="flex justify-center space-x-3 mb-6">
+        <img src="https://flagcdn.com/w40/tr.png" class="lang-btn h-6 active" data-lang="tr" alt="Türkçe">
+        <img src="https://flagcdn.com/w40/gb.png" class="lang-btn h-6" data-lang="en" alt="English">
+        <img src="https://flagcdn.com/w40/de.png" class="lang-btn h-6" data-lang="de" alt="Deutsch">
+        <img src="https://flagcdn.com/w40/fr.png" class="lang-btn h-6" data-lang="fr" alt="Français">
+        <img src="https://flagcdn.com/w40/cn.png" class="lang-btn h-6" data-lang="zh" alt="中文">
+        <img src="https://flagcdn.com/w40/jp.png" class="lang-btn h-6" data-lang="ja" alt="日本語">
+        <img src="https://flagcdn.com/w40/kr.png" class="lang-btn h-6" data-lang="ko" alt="한국어">
+        <img src="https://flagcdn.com/w40/sa.png" class="lang-btn h-6" data-lang="ar" alt="العربية">
+    </div>
+
+    <div class="mb-8 p-4 border rounded-xl bg-gray-50">
+      <h2 class="text-lg font-bold text-gray-800 mb-4 text-center md:text-left" data-translate-key="marketDataTitle">Piyasa Verileri</h2>
+      <div id="market-widget-container" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+        <div class="text-center animate-pulse col-span-full" data-translate-key="loading">Yükleniyor...</div>
+      </div>
+    </div>
+
+    <div class="text-center mb-6">
+      <h1 class="text-3xl md:text-4xl font-bold text-gray-800" data-translate-key="mainTitle">Yatırım Getirisi Hesaplayıcı</h1>
+      <p class="text-gray-500 mt-2" data-translate-key="subtitle">Kripto, maden, döviz ve faiz getirisi karşılaştırma aracı.</p>
+    </div>
+
+    <form id="calculator-form" class="space-y-6">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div>
+          <label for="amount" class="block text-sm font-medium text-gray-700 mb-1" data-translate-key="investmentAmount">Yatırım Miktarı (TL)</label>
+          <input type="number" id="amount" min="1" required placeholder="Örn: 10000" class="w-full p-3 border border-gray-300 rounded-lg" />
+        </div>
+        <div>
+          <label for="months" class="block text-sm font-medium text-gray-700 mb-1" data-translate-key="duration">Süre (Ay)</label>
+          <input type="number" id="months" min="1" value="12" required placeholder="Örn: 12" class="w-full p-3 border border-gray-300 rounded-lg" />
+        </div>
+        <div>
+          <label for="base-date" class="block text-sm font-medium text-gray-700 mb-1" data-translate-key="endDate">Bitiş Tarihi</label>
+          <input type="date" id="base-date" class="w-full p-3 border border-gray-300 rounded-lg" />
+          <p class="text-xs text-gray-400 mt-1" data-translate-key="endDateDefault">Varsayılan: bugün</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div>
+          <label for="annual-rate" class="block text-sm font-medium text-gray-700 mb-1" data-translate-key="interestRate">Yıllık Faiz Oranı (%)</label>
+          <input type="number" step="0.01" id="annual-rate" placeholder="Örn: 52.5" class="w-full p-3 border border-gray-300 rounded-lg" />
+        </div>
+        <div class="flex items-end">
+          <label class="inline-flex items-center">
+            <input id="include-interest" type="checkbox" class="mr-2 h-4 w-4 custom-checkbox appearance-none border-2 border-gray-300 rounded"/>
+            <span class="text-sm text-gray-700" data-translate-key="includeInterest">Faizi Hesaplamaya Dahil Et</span>
+          </label>
+        </div>
+        <div class="space-y-2">
+            <label class="block text-sm font-medium text-gray-700" data-translate-key="assetSearch">Varlık Arama</label>
+            <div class="flex items-center gap-2">
+                <input type="search" id="asset-search" placeholder="Varlık ara..." class="w-full p-2 border border-gray-300 rounded-lg text-sm" data-translate-key="searchPlaceholder">
+            </div>
+        </div>
+      </div>
+      
+      <div class="flex justify-end">
+         <label class="flex items-center text-sm"><input type="checkbox" id="select-all-global" class="mr-1 custom-checkbox appearance-none border-2 border-gray-300 rounded"><span data-translate-key="selectAllGlobal">Hepsini Seç</span></label>
+      </div>
+
+      <!-- Varlık Seçim Kutucukları -->
+      <div id="asset-panels" class="space-y-6">
+        <!-- Döviz Bölümü -->
+        <div class="p-4 border rounded-lg bg-gray-50 asset-category-panel">
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="font-semibold text-gray-800" data-translate-key="forex">Döviz</h3>
+                <label class="flex items-center text-sm"><input type="checkbox" class="select-all-tab mr-1 custom-checkbox appearance-none border-2 border-gray-300 rounded"><span data-translate-key="selectAll">Tümünü Seç</span></label>
+            </div>
+            <div id="currency-list" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3"></div>
+            <button type="button" id="show-more-assets" class="text-indigo-600 text-sm font-semibold mt-3 w-full text-center hover:text-indigo-500" data-translate-key="showMore"> + Daha Fazla Göster</button>
+        </div>
+        <!-- Değerli Maden Bölümü -->
+        <div class="p-4 border rounded-lg bg-gray-50 asset-category-panel">
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="font-semibold text-gray-800" data-translate-key="metals">Değerli Maden</h3>
+                <label class="flex items-center text-sm"><input type="checkbox" class="select-all-tab mr-1 custom-checkbox appearance-none border-2 border-gray-300 rounded"><span data-translate-key="selectAll">Tümünü Seç</span></label>
+            </div>
+            <div id="metal-list" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3"></div>
+        </div>
+        <!-- Kripto Para Bölümü -->
+        <div class="p-4 border rounded-lg bg-gray-50 asset-category-panel">
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="font-semibold text-gray-800" data-translate-key="crypto">Kripto Para</h3>
+                <label class="flex items-center text-sm"><input type="checkbox" class="select-all-tab mr-1 custom-checkbox appearance-none border-2 border-gray-300 rounded"><span data-translate-key="selectAll">Tümünü Seç</span></label>
+            </div>
+            <div id="crypto-list" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3"></div>
+        </div>
+      </div>
+
+      <button type="submit" id="calculate-btn" class="w-full bg-indigo-600 text-white font-bold py-3 rounded-lg flex items-center justify-center transition hover:bg-indigo-700">
+        <span id="btn-text" data-translate-key="calculate">Hesapla</span>
+        <div id="btn-loader" class="loader hidden ml-2"></div>
+      </button>
+    </form>
+
+    <!-- Sonuçlar ve Hata Modalı -->
+    <div id="results-section" class="hidden mt-8">
+      <div class="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 rounded-lg mb-4">
+        <p class="font-bold" data-translate-key="dataSourceTitle">Veri Kaynağı Bilgisi</p>
+        <p data-translate-key="dataSourceDesc">Anlık döviz ve kripto verileri API'lerden alınır. Geçmişe dönük tüm hesaplamalar (döviz, maden, kripto) simüle edilmiş veritabanları üzerinden yapılır.</p>
+      </div>
+      <h2 id="date-range" class="text-xl font-semibold text-gray-700 text-center mb-4"></h2>
+      <div class="grid grid-cols-1 gap-6">
+        <div class="overflow-x-auto bg-white rounded-lg shadow-md p-4">
+          <table class="min-w-full">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase" data-translate-key="tableAsset">Varlık</th>
+                <th class="py-3 px-4 text-right text-xs font-semibold text-gray-600 uppercase" data-translate-key="tableReturn">Getiri (%)</th>
+                <th class="py-3 px-4 text-right text-xs font-semibold text-gray-600 uppercase" data-translate-key="tableProfit">Kar/Zarar (₺)</th>
+                <th class="py-3 px-4 text-right text-xs font-semibold text-gray-600 uppercase" data-translate-key="tableStartPrice">Başlangıç F. (₺)</th>
+                <th class="py-3 px-4 text-right text-xs font-semibold text-gray-600 uppercase" data-translate-key="tableEndPrice">Bitiş F. (₺)</th>
+              </tr>
+            </thead>
+            <tbody id="results-table-body" class="divide-y divide-gray-200"></tbody>
+          </table>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="bg-white p-4 rounded-lg shadow-md">
+                <div class="chart-container"><canvas id="results-chart"></canvas></div>
+            </div>
+            <div class="bg-white p-4 rounded-lg shadow-md">
+                <div class="chart-container"><canvas id="pie-chart"></canvas></div>
+            </div>
+        </div>
+      </div>
+    </div>
+    <div id="error-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
+      <div class="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full text-center">
+        <h3 class="text-lg font-bold text-red-600 mb-4" data-translate-key="errorTitle">Hata</h3>
+        <p id="error-message" class="text-gray-700 mb-6"></p>
+        <button id="close-modal-btn" class="bg-red-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-red-600" data-translate-key="close">Kapat</button>
+      </div>
+    </div>
+    <!-- Yasal Uyarı Modalı -->
+    <div id="disclaimer-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 hidden z-50">
+      <div class="bg-white rounded-lg shadow-xl p-6 max-w-lg w-full">
+        <h3 class="text-lg font-bold text-amber-600 mb-4" data-translate-key="disclaimerTitle">DİKKAT: GEÇMİŞ PERFORMANS GELECEĞİN GÖSTERGESİ DEĞİLDİR</h3>
+        <div class="text-sm text-gray-700 space-y-2" data-translate-key="disclaimerText">
+            <p>Bu araç, yalnızca <strong>geçmiş dönemlerdeki</strong> yatırım getirilerini simüle eder. Gösterilen sonuçlar:</p>
+            <ol class="list-decimal list-inside space-y-1 pl-2">
+                <li>Gelecekteki kazanç garantisi veya tavsiyesi <strong>değildir</strong>,</li>
+                <li>Piyasa riski, enflasyon, düzenleyici değişiklikler vb. faktörleri içermez,</li>
+                <li>Komisyon, vergi veya işlem maliyetlerini hesaba katmaz.</li>
+            </ol>
+            <p>Kripto paralar, emtialar ve döviz piyasaları <strong>yüksek volatilite</strong> içerir. Geçmiş performans, gelecek sonuçların güvenilir bir öngörüsü değildir. Bu araçla elde edilen bilgiler <strong>kişisel yatırım danışmanlığı</strong> yerine geçmez. Yatırım kararlarınız öncesinde lütfen bağımsız bir finansal danışmana ve güncel resmi kaynaklara başvurun.</p>
+            <p>Hesaplama yaparak, bu uyarıları okuduğunuzu ve yatırım risklerini tamamen kendi sorumluluğunuzda üstlendiğinizi kabul etmiş olursunuz.</p>
+        </div>
+        <div class="flex justify-end space-x-4 mt-6">
+            <button id="decline-btn" class="bg-gray-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-gray-600" data-translate-key="decline">Kabul Etmiyorum</button>
+            <button id="accept-btn" class="bg-indigo-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-indigo-700" data-translate-key="accept">Kabul Ediyorum</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+    const FRANKFURTER_API_URL = 'https://api.frankfurter.app';
+    const COINGECKO_API_URL = 'https://api.coingecko.com/api/v3';
+
+    // --- VERİ KAYNAKLARI ---
+    const PRECIOUS_METALS_DB = {
+        'XAUTRY': { '2020-01-31': 298.5, '2020-12-31': 454.1, '2021-12-31': 780.2, '2022-12-31': 1096.0, '2023-06-30': 1610.0, '2023-12-31': 1956.0, '2024-01-31': 2040.0, '2024-02-29': 2055.0, '2024-03-31': 2245.0, '2024-04-30': 2420.0, '2024-05-31': 2410.0, '2024-06-30': 2460.0, '2024-07-31': 2495.0, '2024-08-15': 2520.0, '2024-08-31': 2550.0, '2024-09-30': 2580.0, '2024-10-31': 2610.0, '2024-11-30': 2650.0, '2024-12-31': 2700.0, '2025-01-31': 2900.0, '2025-02-28': 3100.0, '2025-03-31': 3400.0, '2025-04-30': 3700.0, '2025-05-31': 3900.0, '2025-06-30': 4100.0, '2025-07-31': 4250.0, '2025-08-15': 4350.0, '2025-08-16': 4374.0 },
+        'XAGTRY': { '2020-01-31': 3.7, '2020-12-31': 6.1, '2021-12-31': 10.2, '2022-12-31': 13.9, '2023-06-30': 19.5, '2023-12-31': 23.0, '2024-01-31': 23.8, '2024-02-29': 24.5, '2024-03-31': 26.2, '2024-04-30': 28.0, '2024-05-31': 30.5, '2024-06-30': 31.2, '2024-07-31': 32.0, '2024-08-15': 32.5, '2024-08-31': 32.8, '2024-09-30': 33.5, '2024-10-31': 34.0, '2024-11-30': 34.5, '2024-12-31': 35.0, '2025-01-31': 38.0, '2025-02-28': 40.0, '2025-03-31': 42.5, '2025-04-30': 44.0, '2025-05-31': 46.0, '2025-06-30': 47.5, '2025-07-31': 48.5, '2025-08-15': 49.5, '2025-08-16': 49.77 }
+    };
+    const CRYPTO_DB = {
+        'bitcoin': { '2020-01-31': 145000, '2020-12-31': 215000, '2021-12-31': 630000, '2022-12-31': 315000, '2023-12-31': 1200000, '2024-06-30': 1900000, '2024-12-31': 2100000, '2025-08-16': 2300000 },
+        'ethereum': { '2020-01-31': 2800, '2020-12-31': 5500, '2021-12-31': 50000, '2022-12-31': 22000, '2023-12-31': 67000, '2024-06-30': 100000, '2024-12-31': 120000, '2025-08-16': 115000 },
+        'solana': { '2021-01-31': 30, '2021-12-31': 2300, '2022-12-31': 185, '2023-12-31': 3000, '2024-06-30': 4000, '2024-12-31': 4500, '2025-08-16': 5200 },
+        'ripple': { '2020-01-31': 1.5, '2020-12-31': 1.7, '2021-12-31': 11, '2022-12-31': 6.3, '2023-12-31': 18, '2024-06-30': 15, '2024-12-31': 25, '2025-08-16': 16 },
+        'cardano': { '2020-01-31': 0.4, '2020-12-31': 1.3, '2021-12-31': 17, '2022-12-31': 4.8, '2023-12-31': 17.5, '2024-06-30': 12, '2024-12-31': 28, '2025-08-16': 14 },
+        'dogecoin': { '2020-01-31': 0.02, '2020-12-31': 0.03, '2021-12-31': 2.3, '2022-12-31': 1.3, '2023-12-31': 2.7, '2024-06-30': 3.8, '2024-12-31': 4.5, '2025-08-16': 4 }
+    };
+    const CRYPTO_INFO = {
+        'bitcoin': { name: 'Bitcoin', symbol: 'BTC', logo: 'https://assets.coingecko.com/coins/images/1/large/bitcoin.png' },
+        'ethereum': { name: 'Ethereum', symbol: 'ETH', logo: 'https://assets.coingecko.com/coins/images/279/large/ethereum.png' },
+        'solana': { name: 'Solana', symbol: 'SOL', logo: 'https://assets.coingecko.com/coins/images/4128/large/solana.png' },
+        'ripple': { name: 'XRP', symbol: 'XRP', logo: 'https://static.crypto.com/token/icons/xrp/color_icon.png' },
+        'cardano': { name: 'Cardano', symbol: 'ADA', logo: 'https://assets.coingecko.com/coins/images/975/large/cardano.png' },
+        'dogecoin': { name: 'Dogecoin', symbol: 'DOGE', logo: 'https://assets.coingecko.com/coins/images/5/large/dogecoin.png' }
+    };
+    const CURRENCY_TRANSLATIONS = {
+        "Australian Dollar": "Avustralya Doları", "Bulgarian Lev": "Bulgar Levası", "Brazilian Real": "Brezilya Reali",
+        "Canadian Dollar": "Kanada Doları", "Swiss Franc": "İsviçre Frangı", "Chinese Yuan Renminbi": "Çin Yuanı",
+        "Czech Koruna": "Çek Korunası", "Danish Krone": "Danimarka Kronu", "Euro": "Euro", "British Pound": "İngiliz Sterlini",
+        "Hong Kong Dollar": "Hong Kong Doları", "Croatian Kuna": "Hırvat Kunası", "Hungarian Forint": "Macar Forinti",
+        "Indonesian Rupiah": "Endonezya Rupisi", "Israeli Shekel": "İsrail Şekeli", "Indian Rupee": "Hindistan Rupisi",
+        "Icelandic Krona": "İzlanda Kronu", "Japanese Yen": "Japon Yeni", "South Korean Won": "Güney Kore Wonu",
+        "Mexican Peso": "Meksika Pesosu", "Malaysian Ringgit": "Malezya Ringgiti", "Norwegian Krone": "Norveç Kronu",
+        "New Zealand Dollar": "Yeni Zelanda Doları", "Philippine Peso": "Filipin Pesosu", "Polish Zloty": "Polonya Zlotisi",
+        "Romanian Leu": "Rumen Leyi", "Russian Rouble": "Rus Rublesi", "Swedish Krona": "İsveç Kronu",
+        "Singapore Dollar": "Singapur Doları", "Thai Baht": "Tayland Bahtı", "Turkish Lira": "Türk Lirası",
+        "US Dollar": "Amerikan Doları", "South African Rand": "Güney Afrika Randı",
+        "United Arab Emirates Dirham": "BAE Dirhemi", "Saudi Riyal": "Suudi Arabistan Riyali"
+    };
+    let CURRENCY_INFO = {};
+    let ALL_ASSETS_INFO = {};
+    let currentLang = 'tr';
+
+    // DOM Elementleri
+    const form = document.getElementById('calculator-form');
+    const marketWidgetContainer = document.getElementById('market-widget-container');
+    const assetSearchInput = document.getElementById('asset-search');
+    const showMoreBtn = document.getElementById('show-more-assets');
+    const amountInput = document.getElementById('amount');
+    const monthsInput = document.getElementById('months');
+    const calculateBtn = document.getElementById('calculate-btn');
+    const btnText = document.getElementById('btn-text');
+    const btnLoader = document.getElementById('btn-loader');
+    const resultsSection = document.getElementById('results-section');
+    const dateRangeDisplay = document.getElementById('date-range');
+    const tableBody = document.getElementById('results-table-body');
+    const chartCanvas = document.getElementById('results-chart');
+    const pieChartCanvas = document.getElementById('pie-chart');
+    const errorModal = document.getElementById('error-modal');
+    const errorMessage = document.getElementById('error-message');
+    const closeModalBtn = document.getElementById('close-modal-btn');
+    const baseDateInput = document.getElementById('base-date');
+    const annualRateInput = document.getElementById('annual-rate');
+    const includeInterestCheckbox = document.getElementById('include-interest');
+    const assetPanels = document.getElementById('asset-panels');
+    const languageSwitcher = document.getElementById('language-switcher');
+    const selectAllGlobalCheckbox = document.getElementById('select-all-global');
+    const disclaimerModal = document.getElementById('disclaimer-modal');
+    const acceptBtn = document.getElementById('accept-btn');
+    const declineBtn = document.getElementById('decline-btn');
+
+    let myChart = null;
+    let myPieChart = null;
+
+    // --- ÇOKLU DİL DESTEĞİ ---
+    const translations = {
+        mainTitle: { tr: 'Yatırım Getirisi Hesaplayıcı', en: 'Investment Return Calculator', de: 'Anlagerendite-Rechner', fr: 'Calculateur de Retour sur Investissement', zh: '投资回报计算器', ja: '投資収益計算機', ko: '투자 수익 계산기', ar: 'حاسبة عائد الاستثمار' },
+        subtitle: { tr: 'Kripto, maden, döviz ve faiz getirisi karşılaştırma aracı.', en: 'Crypto, metal, forex, and interest return comparison tool.', de: 'Vergleichs-Tool für Krypto-, Metall-, Devisen- und Zinsrenditen.', fr: 'Outil de comparaison de rendement pour crypto, métaux, devises et intérêts.', zh: '加密货币、贵金属、外汇和利息回报比较工具。', ja: '暗号資産、貴金属、外国為替、利子収益の比較ツール。', ko: '암호화폐, 귀금속, 외환 및 이자 수익 비교 도구.', ar: 'أداة مقارنة عوائد العملات المشفرة والمعادن والعملات الأجنبية والفوائد.' },
+        marketDataTitle: { tr: 'Piyasa Verileri', en: 'Market Data', de: 'Marktdaten', fr: 'Données du Marché', zh: '市场数据', ja: '市場データ', ko: '시장 데이터', ar: 'بيانات السوق' },
+        investmentAmount: { tr: 'Yatırım Miktarı (TL)', en: 'Investment Amount (TRY)', de: 'Anlagebetrag (TRY)', fr: 'Montant de l\'investissement (TRY)', zh: '投资金额 (TRY)', ja: '投資額 (TRY)', ko: '투자 금액 (TRY)', ar: 'مبلغ الاستثمار (ليرة تركية)' },
+        duration: { tr: 'Süre (Ay)', en: 'Duration (Months)', de: 'Dauer (Monate)', fr: 'Durée (Mois)', zh: '期限 (月)', ja: '期間 (月)', ko: '기간 (개월)', ar: 'المدة (أشهر)' },
+        endDate: { tr: 'Bitiş Tarihi', en: 'End Date', de: 'Enddatum', fr: 'Date de Fin', zh: '结束日期', ja: '終了日', ko: '종료일', ar: 'تاريخ الانتهاء' },
+        endDateDefault: { tr: 'Varsayılan: bugün', en: 'Default: today', de: 'Standard: heute', fr: 'Défaut: aujourd\'hui', zh: '默认: 今天', ja: 'デフォルト: 今日', ko: '기본값: 오늘', ar: 'الافتراضي: اليوم' },
+        interestRate: { tr: 'Yıllık Faiz Oranı (%)', en: 'Annual Interest Rate (%)', de: 'Jährlicher Zinssatz (%)', fr: 'Taux d\'intérêt annuel (%)', zh: '年利率 (%)', ja: '年間利率 (%)', ko: '연간 이자율 (%)', ar: 'سعر الفائدة السنوي (٪)' },
+        includeInterest: { tr: 'Faizi Hesaplamaya Dahil Et', en: 'Include Interest in Calculation', de: 'Zinsen in die Berechnung einbeziehen', fr: 'Inclure les intérêts dans le calcul', zh: '计算中包括利息', ja: '計算に利息を含める', ko: '계산에 이자 포함', ar: 'تضمين الفائدة في الحساب' },
+        assetSearch: { tr: 'Varlık Arama', en: 'Asset Search', de: 'Anlagen-Suche', fr: 'Recherche d\'Actifs', zh: '资产搜索', ja: '資産検索', ko: '자산 검색', ar: 'بحث عن أصل' },
+        searchPlaceholder: { tr: 'Varlık ara...', en: 'Search for asset...', de: 'Anlage suchen...', fr: 'Rechercher un actif...', zh: '搜索资产...', ja: '資産を検索...', ko: '자산 검색...', ar: 'ابحث عن أصل...' },
+        selectAllGlobal: { tr: 'Hepsini Seç', en: 'Select All', de: 'Alle auswählen', fr: 'Tout sélectionner', zh: '全选', ja: 'すべて選択', ko: '전체 선택', ar: 'تحديد الكل' },
+        forex: { tr: 'Döviz', en: 'Forex', de: 'Devisen', fr: 'Devises', zh: '外汇', ja: '外国為替', ko: '외환', ar: 'العملات الأجنبية' },
+        metals: { tr: 'Değerli Maden', en: 'Precious Metal', de: 'Edelmetall', fr: 'Métal Précieux', zh: '贵金属', ja: '貴金属', ko: '귀금속', ar: 'المعادن الثمينة' },
+        crypto: { tr: 'Kripto Para', en: 'Cryptocurrency', de: 'Kryptowährung', fr: 'Crypto-monnaie', zh: '加密货币', ja: '暗号資産', ko: '암호화폐', ar: 'العملات المشفرة' },
+        selectAll: { tr: 'Tümünü Seç', en: 'Select All', de: 'Alle auswählen', fr: 'Tout sélectionner', zh: '全选', ja: 'すべて選択', ko: '전체 선택', ar: 'تحديد الكل' },
+        showMore: { tr: '+ Daha Fazla Göster', en: '+ Show More', de: '+ Mehr anzeigen', fr: '+ Afficher plus', zh: '+ 显示更多', ja: '+ もっと見る', ko: '+ 더 보기', ar: '+ إظهار المزيد' },
+        calculate: { tr: 'Hesapla', en: 'Calculate', de: 'Berechnen', fr: 'Calculer', zh: '计算', ja: '計算', ko: '계산', ar: 'احسب' },
+        dataSourceTitle: { tr: 'Veri Kaynağı Bilgisi', en: 'Data Source Information', de: 'Datenquelleninformation', fr: 'Information sur la Source des Données', zh: '数据来源信息', ja: 'データソース情報', ko: '데이터 소스 정보', ar: 'معلومات مصدر البيانات' },
+        dataSourceDesc: { tr: "Anlık döviz ve kripto verileri API'lerden alınır. Geçmişe dönük tüm hesaplamalar (döviz, maden, kripto) simüle edilmiş veritabanları üzerinden yapılır.", en: "Live forex and crypto data are fetched from APIs. All historical calculations (forex, metal, crypto) are made via simulated databases.", de: "Live-Devisen- und Kryptodaten werden von APIs abgerufen. Alle historischen Berechnungen (Devisen, Metalle, Krypto) erfolgen über simulierte Datenbanken.", fr: "Les données en direct sur les devises et les cryptomonnaies sont extraites des API. Tous les calculs historiques (devises, métaux, crypto) sont effectués via des bases de données simulées.", zh: "实时外汇和加密数据从API获取。所有历史计算（外汇、贵金属、加密货币）均通过模拟数据库进行。", ja: "ライブの為替および暗号資産データはAPIから取得されます。すべての過去の計算（為替、貴金属、暗号資産）は、シミュレートされたデータベースを介して行われます。", ko: "실시간 외환 및 암호화폐 데이터는 API에서 가져옵니다. 모든 과거 계산(외환, 귀금속, 암호화폐)은 시뮬레이션된 데이터베이스를 통해 이루어집니다.", ar: "يتم جلب بيانات العملات الأجنبية والعملات المشفرة المباشرة من واجهات برمجة التطبيقات. تتم جميع الحسابات التاريخية (العملات الأجنبية، المعادن، العملات المشفرة) عبر قواعد بيانات محاكاة." },
+        tableAsset: { tr: 'Varlık', en: 'Asset', de: 'Anlage', fr: 'Actif', zh: '资产', ja: '資産', ko: '자산', ar: 'الأصل' },
+        tableReturn: { tr: 'Getiri (%)', en: 'Return (%)', de: 'Rendite (%)', fr: 'Rendement (%)', zh: '回报率 (%)', ja: 'リターン (%)', ko: '수익률 (%)', ar: 'العائد (٪)' },
+        tableProfit: { tr: 'Kar/Zarar (₺)', en: 'Profit/Loss (TRY)', de: 'Gewinn/Verlust (TRY)', fr: 'Profit/Perte (TRY)', zh: '盈/亏 (TRY)', ja: '利益/損失 (TRY)', ko: '손익 (TRY)', ar: 'الربح/الخسارة (ليرة تركية)' },
+        tableStartPrice: { tr: 'Başlangıç F. (₺)', en: 'Start Price (TRY)', de: 'Startpreis (TRY)', fr: 'Prix de Départ (TRY)', zh: '起始价格 (TRY)', ja: '開始価格 (TRY)', ko: '시작 가격 (TRY)', ar: 'سعر البداية (ليرة تركية)' },
+        tableEndPrice: { tr: 'Bitiş F. (₺)', en: 'End Price (TRY)', de: 'Endpreis (TRY)', fr: 'Prix Final (TRY)', zh: '结束价格 (TRY)', ja: '終了価格 (TRY)', ko: '종료 가격 (TRY)', ar: 'سعر النهاية (ليرة تركية)' },
+        errorTitle: { tr: 'Hata', en: 'Error', de: 'Fehler', fr: 'Erreur', zh: '错误', ja: 'エラー', ko: '오류', ar: 'خطأ' },
+        close: { tr: 'Kapat', en: 'Close', de: 'Schließen', fr: 'Fermer', zh: '关闭', ja: '閉じる', ko: '닫기', ar: 'إغلاق' },
+        loading: { tr: 'Yükleniyor...', en: 'Loading...', de: 'Wird geladen...', fr: 'Chargement...', zh: '加载中...', ja: '読み込み中...', ko: '로딩 중...', ar: 'جار التحميل...' },
+        monthsReturn: { tr: 'Aylık Getiri', en: 'Month Return', de: 'Monatsrendite', fr: 'Rendement Mensuel', zh: '月度回报', ja: '月間リターン', ko: '월간 수익률', ar: 'عائد شهري' },
+        asset_XAUTRY: { tr: 'Gram Altın', en: 'Gram Gold', de: 'Gramm Gold', fr: 'Gramme d\'Or', zh: '克黄金', ja: 'グラムゴールド', ko: '그램 골드', ar: 'جرام ذهب' },
+        asset_XAGTRY: { tr: 'Gram Gümüş', en: 'Gram Silver', de: 'Gramm Silber', fr: 'Gramme d\'Argent', zh: '克白银', ja: 'グラムシルバー', ko: '그램 실버', ar: 'جرام فضة' },
+        asset_XPTTRY: { tr: 'Gram Platin', en: 'Gram Platinum', de: 'Gramm Platin', fr: 'Gramme de Platine', zh: '克铂金', ja: 'グラムプラチナ', ko: '그램 플래티넘', ar: 'جرام بلاتين' },
+        asset_XPDTRY: { tr: 'Gram Paladyum', en: 'Gram Palladium', de: 'Gramm Palladium', fr: 'Gramme de Palladium', zh: '克钯金', ja: 'グラムパラジウム', ko: '그램 팔라듐', ar: 'جرام بلاديوم' },
+        asset_bitcoin: { tr: 'Bitcoin', en: 'Bitcoin', de: 'Bitcoin', fr: 'Bitcoin', zh: '比特币', ja: 'ビットコイン', ko: '비트코인', ar: 'بيتكوين' },
+        asset_ethereum: { tr: 'Ethereum', en: 'Ethereum', de: 'Ethereum', fr: 'Ethereum', zh: '以太坊', ja: 'イーサリアム', ko: '이더리움', ar: 'إيثريوم' },
+        asset_solana: { tr: 'Solana', en: 'Solana', de: 'Solana', fr: 'Solana', zh: '索拉纳', ja: 'ソラナ', ko: '솔라나', ar: 'سولانا' },
+        asset_ripple: { tr: 'XRP', en: 'XRP', de: 'XRP', fr: 'XRP', zh: '瑞波币', ja: 'リップル', ko: '리플', ar: 'ريبل' },
+        asset_cardano: { tr: 'Cardano', en: 'Cardano', de: 'Cardano', fr: 'Cardano', zh: '卡尔达诺', ja: 'カルダノ', ko: '카르다노', ar: 'كاردانو' },
+        asset_dogecoin: { tr: 'Dogecoin', en: 'Dogecoin', de: 'Dogecoin', fr: 'Dogecoin', zh: '狗狗币', ja: 'ドージコイン', ko: '도지코인', ar: 'دجكوين' },
+        disclaimerTitle: { tr: "DİKKAT: GEÇMİŞ PERFORMANS GELECEĞİN GÖSTERGESİ DEĞİLDİR", en: "ATTENTION: PAST PERFORMANCE IS NOT INDICATIVE OF FUTURE RESULTS", de: "ACHTUNG: VERGANGENE PERFORMANCE IST KEIN INDIKATOR FÜR ZUKÜNFTIGE ERGEBNISSE", fr: "ATTENTION : LES PERFORMANCES PASSÉES NE PRÉJUGENT PAS DES RÉSULTATS FUTURS", zh: "注意：过往表现并非未来结果的指标", ja: "注意：過去のパフォーマンスは将来の結果を示すものではありません", ko: "주의: 과거의 성과는 미래의 결과를 나타내지 않습니다", ar: "تنبيه: الأداء السابق ليس مؤشراً على النتائج المستقبلية" },
+        disclaimerText: { tr: `<p>Bu araç, yalnızca <strong>geçmiş dönemlerdeki</strong> yatırım getirilerini simüle eder. Gösterilen sonuçlar:</p><ol class="list-decimal list-inside space-y-1 pl-2"><li>Gelecekteki kazanç garantisi veya tavsiyesi <strong>değildir</strong>,</li><li>Piyasa riski, enflasyon, düzenleyici değişiklikler vb. faktörleri içermez,</li><li>Komisyon, vergi veya işlem maliyetlerini hesaba katmaz.</li></ol><p>Kripto paralar, emtialar ve döviz piyasaları <strong>yüksek volatilite</strong> içerir. Geçmiş performans, gelecek sonuçların güvenilir bir öngörüsü değildir. Bu araçla elde edilen bilgiler <strong>kişisel yatırım danışmanlığı</strong> yerine geçmez. Yatırım kararlarınız öncesinde lütfen bağımsız bir finansal danışmana ve güncel resmi kaynaklara başvurun.</p><p>Hesaplama yaparak, bu uyarıları okuduğunuzu ve yatırım risklerini tamamen kendi sorumluluğunuzda üstlendiğinizi kabul etmiş olursunuz.</p>`, en: `<p>This tool only simulates investment returns from <strong>past periods</strong>. The results shown:</p><ol class="list-decimal list-inside space-y-1 pl-2"><li>Are <strong>not</strong> a guarantee or recommendation of future earnings,</li><li>Do not include factors such as market risk, inflation, regulatory changes, etc.,</li><li>Do not account for commissions, taxes, or transaction costs.</li></ol><p>Cryptocurrencies, commodities, and foreign exchange markets involve <strong>high volatility</strong>. Past performance is not a reliable predictor of future results. The information obtained with this tool does <strong>not</strong> substitute for <strong>personal investment advice</strong>. Please consult an independent financial advisor and current official sources before making investment decisions.</p><p>By calculating, you acknowledge that you have read these warnings and assume all investment risks at your own responsibility.</p>`, ar: `<p>هذه الأداة تحاكي فقط عوائد الاستثمار من <strong>الفترات السابقة</strong>. النتائج المعروضة:</p><ol class="list-decimal list-inside space-y-1 pl-2" style="padding-right: 1rem;"><li><strong>ليست</strong> ضمانًا أو توصية بالأرباح المستقبلية،</li><li>لا تشمل عوامل مثل مخاطر السوق، التضخم، التغييرات التنظيمية، إلخ،</li><li>لا تأخذ في الحسبان العمولات، الضرائب، أو تكاليف المعاملات.</li></ol><p>تنطوي العملات المشفرة والسلع وأسواق الصرف الأجنبي على <strong>تقلبات عالية</strong>. الأداء السابق ليس مؤشرًا موثوقًا للنتائج المستقبلية. المعلومات التي يتم الحصول عليها باستخدام هذه الأداة <strong>لا تحل محل المشورة الاستثمارية الشخصية</strong>. يرجى استشارة مستشار مالي مستقل ومصادر رسمية حديثة قبل اتخاذ قرارات الاستثمار.</p><p>بإجراء الحساب، فإنك تقر بأنك قد قرأت هذه التحذيرات وتتحمل جميع مخاطر الاستثمار على مسؤوليتك الخاصة.</p>` },
+        accept: { tr: 'Kabul Ediyorum', en: 'I Agree', de: 'Ich stimme zu', fr: 'J\'accepte', zh: '我同意', ja: '同意します', ko: '동의합니다', ar: 'أوافق' },
+        decline: { tr: 'Kabul Etmiyorum', en: 'I Decline', de: 'Ich lehne ab', fr: 'Je refuse', zh: '我不同意', ja: '同意しません', ko: '동의하지 않습니다', ar: 'لا أوافق' },
+    };
+
+    function getTranslation(key, fallback = '') {
+        if (key.startsWith('currency_')) {
+            const code = key.replace('currency_', '');
+            const englishName = CURRENCY_INFO[code]?.name || fallback;
+            return CURRENCY_TRANSLATIONS[englishName]?.[currentLang] || englishName;
+        }
+        return translations[key]?.[currentLang] || fallback;
+    }
+
+    function changeLanguage(lang) {
+        currentLang = lang;
+        document.documentElement.lang = lang;
+        document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+
+        document.querySelectorAll('[data-translate-key]').forEach(el => {
+            const key = el.dataset.translateKey;
+            const fallback = el.tagName === 'INPUT' ? el.placeholder : el.innerHTML;
+            const translation = getTranslation(key, fallback);
+            if (el.tagName === 'INPUT') {
+                el.placeholder = translation;
+            } else {
+                el.innerHTML = translation;
+            }
+        });
+        
+        languageSwitcher.querySelectorAll('.lang-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.lang === lang);
+        });
+
+        rebuildAssetLists();
+    }
+
+    // --- BAŞLANGIÇ FONKSİYONLARI ---
+    document.addEventListener('DOMContentLoaded', async () => {
+      await initializeAssetSelectors();
+      await updateMarketWidget();
+      baseDateInput.value = new Date().toISOString().split('T')[0];
+      changeLanguage(currentLang);
+    });
+
+    async function initializeAssetSelectors() {
+        try {
+            const res = await fetch(`${FRANKFURTER_API_URL}/currencies`);
+            const currencies = await res.json();
+            const currencyToCountryCodeMap = { 'SAR': 'sa', 'AED': 'ae', 'TRY': 'tr', 'GBP': 'gb', 'USD': 'us', 'EUR': 'eu', 'JPY': 'jp', 'CHF': 'ch', 'CNY': 'cn', 'KRW': 'kr' };
+            for(const code in currencies){
+                const englishName = currencies[code];
+                const countryCode = currencyToCountryCodeMap[code] || code.substring(0, 2).toLowerCase();
+                CURRENCY_INFO[code] = { 
+                    name: englishName, 
+                    logo: `https://flagcdn.com/w40/${countryCode}.png` 
+                };
+            }
+            
+            ALL_ASSETS_INFO = {
+                ...CURRENCY_INFO,
+                'XAUTRY': { name: 'Gram Altın', logo: 'https://img.icons8.com/fluency/48/gold-bars.png' },
+                'XAGTRY': { name: 'Gram Gümüş', logo: 'https://img.icons8.com/fluency/48/silver-bars.png' },
+                ...CRYPTO_INFO
+            };
+            
+            rebuildAssetLists();
+
+        } catch (error) {
+            showError("Varlık listesi yüklenemedi. Lütfen sayfayı yenileyin.");
+        }
+    }
+    
+    function rebuildAssetLists() {
+        const currencyList = document.getElementById('currency-list');
+        const metalList = document.getElementById('metal-list');
+        const cryptoList = document.getElementById('crypto-list');
+        
+        currencyList.innerHTML = '';
+        metalList.innerHTML = '';
+        cryptoList.innerHTML = '';
+
+        const popularCurrencies = ['USD', 'EUR', 'GBP', 'CHF', 'CAD', 'AUD', 'JPY', 'SAR', 'AED'];
+        Object.keys(CURRENCY_INFO).sort().forEach(code => {
+            const info = CURRENCY_INFO[code];
+            const translatedName = getTranslation('currency_' + code, info.name);
+            const isHidden = !popularCurrencies.includes(code) ? 'hidden' : '';
+            currencyList.innerHTML += createAssetCheckboxHTML(code, translatedName, info.logo, 'asset-logo', ['USD', 'EUR'].includes(code), isHidden);
+        });
+
+        ['XAUTRY', 'XAGTRY'].forEach(code => {
+            const info = ALL_ASSETS_INFO[code];
+            const translatedName = getTranslation('asset_' + code, info.name);
+            metalList.innerHTML += createAssetCheckboxHTML(code, translatedName, info.logo, 'metal-logo', ['XAUTRY', 'XAGTRY'].includes(code));
+        });
+
+        Object.keys(CRYPTO_INFO).forEach(id => {
+            const info = CRYPTO_INFO[id];
+            const translatedName = getTranslation('asset_' + id, info.name);
+            cryptoList.innerHTML += createAssetCheckboxHTML(id, translatedName, info.logo, 'crypto-logo', id === 'bitcoin');
+        });
+    }
+
+    function createAssetCheckboxHTML(id, name, logo, logoClass, isChecked = false, isHidden = '') {
+        return `
+            <div class="flex items-center asset-item ${isHidden}" data-name="${name.toLowerCase()} ${id.toLowerCase()}">
+                <input id="asset-${id}" type="checkbox" value="${id}" ${isChecked ? 'checked' : ''} class="custom-checkbox appearance-none h-5 w-5 border-2 border-gray-300 rounded cursor-pointer">
+                <label for="asset-${id}" class="ml-2 text-sm font-medium text-gray-700 cursor-pointer flex items-center" title="${id.toUpperCase()}">
+                    <img src="${logo}" alt="${name}" class="${logoClass} mr-2" onerror="this.style.display='none'">
+                    <span>${ALL_ASSETS_INFO[id]?.symbol || id}</span>
+                </label>
+            </div>
+        `;
+    }
+
+    async function updateMarketWidget() {
+        try {
+            const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+            const yesterdayStr = yesterday.toISOString().split('T')[0];
+            const cryptoIds = Object.keys(CRYPTO_INFO).join(',');
+
+            const [frankfurterLatest, frankfurterYesterday, coingeckoData] = await Promise.all([
+                fetch(`${FRANKFURTER_API_URL}/latest?from=EUR&to=TRY,USD`),
+                fetch(`${FRANKFURTER_API_URL}/${yesterdayStr}?from=EUR&to=TRY,USD`),
+                fetch(`${COINGECKO_API_URL}/simple/price?ids=${cryptoIds}&vs_currencies=try&include_24hr_change=true`)
+            ]);
+
+            if (!frankfurterLatest.ok || !frankfurterYesterday.ok || !coingeckoData.ok) throw new Error("Piyasa verileri alınamadı.");
+            
+            const todayFX = await frankfurterLatest.json();
+            const yesterdayFX = await frankfurterYesterday.json();
+            const crypto = await coingeckoData.json();
+
+            const todayUSDtoTRY = todayFX.rates.TRY / todayFX.rates.USD;
+            const yesterdayUSDtoTRY = yesterdayFX.rates.TRY / yesterdayFX.rates.USD;
+            const todayEURtoTRY = todayFX.rates.TRY;
+            const yesterdayEURtoTRY = yesterdayFX.rates.TRY;
+            
+            const goldDates = Object.keys(PRECIOUS_METALS_DB.XAUTRY);
+            const silverDates = Object.keys(PRECIOUS_METALS_DB.XAGTRY);
+            const todayGoldPrice = PRECIOUS_METALS_DB.XAUTRY[goldDates[goldDates.length - 1]];
+            const yesterdayGoldPrice = PRECIOUS_METALS_DB.XAUTRY[goldDates[goldDates.length - 2]];
+            const todaySilverPrice = PRECIOUS_METALS_DB.XAGTRY[silverDates[silverDates.length - 1]];
+            const yesterdaySilverPrice = PRECIOUS_METALS_DB.XAGTRY[silverDates[silverDates.length - 2]];
+
+            const widgetData = [
+                { name: 'Dolar (Anlık)', logo: CURRENCY_INFO.USD.logo, today: todayUSDtoTRY, change: todayUSDtoTRY - yesterdayUSDtoTRY, changePercent: ((todayUSDtoTRY - yesterdayUSDtoTRY) / yesterdayUSDtoTRY) * 100 },
+                { name: 'Euro (Anlık)', logo: CURRENCY_INFO.EUR.logo, today: todayEURtoTRY, change: todayEURtoTRY - yesterdayEURtoTRY, changePercent: ((todayEURtoTRY - yesterdayEURtoTRY) / yesterdayEURtoTRY) * 100 },
+                { name: 'Altın (Dün)', logo: ALL_ASSETS_INFO.XAUTRY.logo, today: todayGoldPrice, change: todayGoldPrice - yesterdayGoldPrice, changePercent: ((todayGoldPrice - yesterdayGoldPrice) / yesterdayGoldPrice) * 100 },
+                { name: 'Gümüş (Dün)', logo: ALL_ASSETS_INFO.XAGTRY.logo, today: todaySilverPrice, change: todaySilverPrice - yesterdaySilverPrice, changePercent: ((todaySilverPrice - yesterdaySilverPrice) / yesterdaySilverPrice) * 100 },
+                { name: 'Bitcoin', logo: CRYPTO_INFO.bitcoin.logo, today: crypto.bitcoin.try, changePercent: crypto.bitcoin.try_24h_change },
+                { name: 'Ethereum', logo: CRYPTO_INFO.ethereum.logo, today: crypto.ethereum.try, changePercent: crypto.ethereum.try_24h_change },
+            ];
+
+            marketWidgetContainer.innerHTML = '';
+            widgetData.forEach(item => {
+                const changePercent = item.changePercent || 0;
+                const change = item.change !== undefined ? item.change : (item.today * changePercent) / (100 + changePercent);
+                const changeClass = changePercent >= 0 ? 'price-up' : 'price-down';
+                const sign = changePercent >= 0 ? '+' : '';
+
+                marketWidgetContainer.innerHTML += `
+                    <div class="flex flex-col items-center p-3 bg-white rounded-lg shadow-sm border">
+                        <div class="flex items-center font-bold text-gray-800 text-center text-sm">
+                           <img src="${item.logo}" alt="${item.name}" class="${item.name.includes('(') ? 'asset-logo' : 'crypto-logo'} mr-2" onerror="this.style.display='none'">
+                           <span>${item.name}</span>
+                        </div>
+                        <p class="text-lg font-semibold text-gray-900 my-1">${item.today.toLocaleString('tr-TR', {style:'currency', currency:'TRY'})}</p>
+                        <div class="flex items-center text-xs font-medium ${changeClass}">
+                           <span>${sign}${change.toFixed(2)} ₺</span>
+                           <span class="mx-1">|</span>
+                           <span>${sign}${changePercent.toFixed(2)}%</span>
+                        </div>
+                    </div>
+                `;
+            });
+
+        } catch (error) {
+            marketWidgetContainer.innerHTML = `<div class="col-span-full text-center text-red-500">${error.message}</div>`;
+        }
+    }
+
+    // --- HESAPLAMA FONKSİYONLARI ---
+    async function calculateAndDisplayResults() {
+        setLoadingState(true);
+        try {
+            const amount = parseFloat(amountInput.value);
+            const months = parseInt(monthsInput.value, 10);
+            const selectedAssets = Array.from(document.querySelectorAll('#asset-panels input:checked')).map(el => el.value);
+            const endDate = baseDateInput.value ? new Date(baseDateInput.value + 'T00:00:00') : new Date();
+            const startDate = computeStartDate(endDate, months);
+            
+            const selectedCurrencies = selectedAssets.filter(a => CURRENCY_INFO[a]);
+            const selectedMetals = selectedAssets.filter(a => PRECIOUS_METALS_DB[a]);
+            const selectedCryptos = selectedAssets.filter(a => CRYPTO_INFO[a]);
+
+            const [endCurrencyRates, startCurrencyRates, endMetalRates, startMetalRates, endCryptoRates, startCryptoRates] = await Promise.all([
+                fetchCurrencyRates(formatDateForAPI(endDate), selectedCurrencies),
+                fetchCurrencyRates(formatDateForAPI(startDate), selectedCurrencies),
+                fetchPreciousMetalRates(formatDateForAPI(endDate), selectedMetals),
+                fetchPreciousMetalRates(formatDateForAPI(startDate), selectedMetals),
+                fetchCryptoRates(endDate, selectedCryptos),
+                fetchCryptoRates(startDate, selectedCryptos)
+            ]);
+            
+            const startRates = { ...startCurrencyRates, ...startMetalRates, ...startCryptoRates };
+            const endRates = { ...endCurrencyRates, ...endMetalRates, ...endCryptoRates };
+
+            const resultsData = processData(amount, startRates, endRates, selectedAssets);
+
+            if (includeInterestCheckbox.checked) {
+              const annualRate = parseFloat(annualRateInput.value);
+              if (isNaN(annualRate) || annualRate <= 0) throw new Error(getTranslation('errorInvalidInterest', "Geçerli bir faiz oranı girin."));
+              const monthlyRate = Math.pow(1 + annualRate / 100, 1/12) - 1;
+              const finalValueGross = amount * Math.pow(1 + monthlyRate, months);
+              const grossProfit = finalValueGross - amount;
+              const stopajRate = getStopajRate(months);
+              const netProfit = grossProfit * (1 - stopajRate);
+              resultsData.push({
+                name: `Faiz (${annualRate.toFixed(2)}%)`,
+                profitLossTL: netProfit,
+                profitLossPercent: (netProfit / amount) * 100,
+              });
+            }
+
+            resultsData.sort((a, b) => b.profitLossPercent - a.profitLossPercent);
+            
+            dateRangeDisplay.textContent = `${months} ${getTranslation('monthsReturn', 'Aylık Getiri')} (${formatDateForDisplay(startDate)} - ${formatDateForDisplay(endDate)})`;
+            displayTable(resultsData);
+            displayChart(resultsData);
+            displayPieChart(resultsData);
+            resultsSection.classList.remove('hidden');
+        } catch (err) {
+            showError(err.message);
+        } finally {
+            setLoadingState(false);
+        }
+    }
+    
+    // GÜNCELLENDİ: Kripto veri çekme fonksiyonu
+    async function fetchCryptoRates(date, cryptoIds) {
+        if (cryptoIds.length === 0) return {};
+        const rates = {};
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const targetDate = new Date(date);
+        targetDate.setHours(0, 0, 0, 0);
+
+        const isToday = targetDate.getTime() >= today.getTime();
+
+        if (isToday) {
+            const ids = cryptoIds.join(',');
+            const res = await fetch(`${COINGECKO_API_URL}/simple/price?ids=${ids}&vs_currencies=try`);
+            if (!res.ok) throw new Error(`Canlı kripto verileri alınamadı (API Hatası: ${res.status})`);
+            const data = await res.json();
+            for (const id of cryptoIds) {
+                if (data[id] && data[id].try) rates[id] = data[id].try;
+            }
+        } else {
+            for (const id of cryptoIds) {
+                const db = CRYPTO_DB[id];
+                if (!db) continue;
+                const closestDate = Object.keys(db)
+                    .map(d => new Date(d))
+                    .filter(d => d <= targetDate)
+                    .sort((a, b) => b - a)[0];
+                
+                if (closestDate) {
+                    rates[id] = db[formatDateForAPI(closestDate)];
+                } else {
+                    console.warn(`${id} için ${targetDate.toLocaleDateString()} tarihinde veri bulunamadı.`);
+                }
+            }
+        }
+
+        const missingCryptos = cryptoIds.filter(id => !rates[id]);
+        if (missingCryptos.length > 0) {
+            const missingNames = missingCryptos.map(id => CRYPTO_INFO[id].name).join(', ');
+            throw new Error(`${missingNames} için seçilen tarihlerde veri bulunamadı. Lütfen farklı bir tarih aralığı deneyin.`);
+        }
+        
+        return rates;
+    }
+
+
+    async function fetchCurrencyRates(dateStr, currencies) {
+        if (currencies.length === 0) return {};
+        const toList = Array.from(new Set(['TRY', 'EUR', ...currencies])).join(',');
+        const url = `${FRANKFURTER_API_URL}/${dateStr}?to=${toList}`;
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error(`API Hatası (${dateStr}): ${resp.status}`);
+        const data = await resp.json();
+        if (!data.rates || !data.rates['TRY']) throw new Error(`Seçilen tarih (${dateStr}) için TRY kuru bulunamadı.`);
+        const eurToTry = data.rates['TRY'];
+        const ratesInTry = {};
+        for (const k in data.rates) { ratesInTry[k] = eurToTry / data.rates[k]; }
+        ratesInTry['EUR'] = eurToTry;
+        return ratesInTry;
+    }
+
+    async function fetchPreciousMetalRates(dateStr, metals) {
+        if (metals.length === 0) return {};
+        const rates = {};
+        const date = new Date(dateStr);
+        for (const metal of metals) {
+            const db = PRECIOUS_METALS_DB[metal];
+            if (!db) continue;
+            const closestDate = Object.keys(db).map(d => new Date(d)).filter(d => d <= date).sort((a, b) => b - a)[0];
+            if (closestDate) rates[metal] = db[formatDateForAPI(closestDate)];
+            else throw new Error(`${metal} için ${dateStr} tarihinden önce bir veri bulunamadı.`);
+        }
+        return rates;
+    }
+
+    function processData(initialAmount, startRates, endRates, selectedAssets) {
+        return selectedAssets
+            .filter(asset => startRates[asset] && endRates[asset])
+            .map(asset => {
+                const startPrice = startRates[asset];
+                const endPrice = endRates[asset];
+                const profitLossTL = (initialAmount / startPrice) * endPrice - initialAmount;
+                const profitLossPercent = (profitLossTL / initialAmount) * 100;
+                return { name: asset, startPrice, endPrice, profitLossTL, profitLossPercent };
+            });
+    }
+
+    // --- GÖRSELLEŞTİRME FONKSİYONLARI ---
+    function displayTable(data) {
+        tableBody.innerHTML = '';
+        data.forEach((item, index) => {
+            const isProfit = item.profitLossTL >= 0;
+            const info = ALL_ASSETS_INFO[item.name] || { name: item.name };
+            const isInterest = item.name.startsWith('Faiz');
+            const logoHtml = info.logo ? `<img src="${info.logo}" alt="${info.name}" class="${CRYPTO_INFO[item.name] ? 'crypto-logo' : 'asset-logo'} mr-2" onerror="this.style.display='none'">` : '';
+            const row = `
+              <tr class="transition ${index === 0 && isProfit ? 'best-performer' : 'hover:bg-gray-50'}">
+                <td class="py-3 px-4 font-semibold text-gray-800">
+                  <div class="flex items-center">
+                    ${logoHtml}
+                    <span>${info.name}</span>
+                    ${index === 0 && isProfit ? '<span class="ml-auto text-xs bg-green-200 text-green-800 font-bold px-2 py-1 rounded-full">🏆 En İyi</span>' : ''}
+                  </div>
+                </td>
+                <td class="py-3 px-4 text-right text-gray-600">${isInterest || !item.startPrice ? '-' : item.startPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '₺'}</td>
+                <td class="py-3 px-4 text-right text-gray-600">${isInterest || !item.endPrice ? '-' : item.endPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '₺'}</td>
+                <td class="py-3 px-4 text-right font-semibold ${isProfit ? 'text-green-600' : 'text-red-600'}">${isProfit ? '+' : ''}${item.profitLossTL.toFixed(2)}₺</td>
+                <td class="py-3 px-4 text-right font-semibold ${isProfit ? 'text-green-600' : 'text-red-600'}">${isProfit ? '+' : ''}${item.profitLossPercent.toFixed(2)}%</td>
+              </tr>`;
+            tableBody.insertAdjacentHTML('beforeend', row);
+        });
+    }
+
+    function displayChart(data){
+      if (myChart) myChart.destroy();
+      const labels = data.map(d => ALL_ASSETS_INFO[d.name]?.name || d.name);
+      const profitLossData = data.map(d => Number(d.profitLossTL.toFixed(2)));
+      const ctx = chartCanvas.getContext('2d');
+      myChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{ label:'Kar/Zarar (₺)', data:profitLossData, backgroundColor: profitLossData.map(v => v >= 0 ? 'rgba(34,197,94,0.85)' : 'rgba(239,68,68,0.85)'), borderRadius:6 }]
+        },
+        options: {
+          responsive:true, maintainAspectRatio:false,
+          plugins:{ legend:{display: false}, tooltip:{ callbacks:{ label: ctx => `Kar/Zarar: ${ctx.raw.toLocaleString('tr-TR', {style:'currency', currency:'TRY'})}` }}},
+          scales:{ 
+              y:{ 
+                  ticks:{
+                      callback: v => v.toLocaleString('tr-TR', {style:'currency', currency:'TRY'}),
+                  },
+              }, 
+              x:{ 
+                  grid:{ display:false } 
+              } 
+          }
+        }
+      });
+    }
+
+    function displayPieChart(data) {
+        if (myPieChart) myPieChart.destroy();
+        const labels = data.map(d => ALL_ASSETS_INFO[d.name]?.name || d.name);
+        const finalValues = data.map(d => Number((amountInput.valueAsNumber + d.profitLossTL).toFixed(2)));
+        const ctx = pieChartCanvas.getContext('2d');
+        myPieChart = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Vade Sonu Değer (₺)',
+                    data: finalValues,
+                    backgroundColor: [
+                        'rgba(79, 70, 229, 0.8)', 'rgba(219, 39, 119, 0.8)', 'rgba(14, 165, 233, 0.8)',
+                        'rgba(245, 158, 11, 0.8)', 'rgba(16, 185, 129, 0.8)', 'rgba(139, 92, 246, 0.8)',
+                        'rgba(239, 68, 68, 0.8)', 'rgba(34, 197, 94, 0.8)', 'rgba(99, 102, 241, 0.8)'
+                    ],
+                    borderColor: '#fff',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'top' },
+                    title: { display: true, text: 'Vade Sonu Değer Dağılımı' }
+                }
+            }
+        });
+    }
+
+    // --- YARDIMCI FONKSİYONLAR VE EVENT LISTENERS ---
+    function getStopajRate(months) { if (months <= 6) return 0.175; if (months <= 12) return 0.15; return 0.10; }
+    function computeStartDate(endDate, monthsBack){ const d = new Date(endDate); d.setMonth(d.getMonth() - monthsBack); return d; }
+    function formatDateForAPI(date){ return date.toISOString().split('T')[0]; }
+    function formatDateForDisplay(date){ return new Intl.DateTimeFormat(currentLang).format(date); }
+    function showError(message){ errorMessage.textContent = message; errorModal.classList.remove('hidden'); }
+    function setLoadingState(isLoading){ calculateBtn.disabled = isLoading; btnText.classList.toggle('hidden', isLoading); btnLoader.classList.toggle('hidden', !isLoading); }
+    
+    form.addEventListener('submit', e => { 
+        e.preventDefault(); 
+        const amount = parseFloat(amountInput.value);
+        const months = parseInt(monthsInput.value, 10);
+        const selectedAssets = Array.from(document.querySelectorAll('#asset-panels input:checked')).map(el => el.value);
+
+        if (isNaN(amount) || amount <= 0) return showError(getTranslation('errorInvalidAmount', "Geçerli bir yatırım miktarı girin."));
+        if (isNaN(months) || months <= 0) return showError(getTranslation('errorInvalidDuration', "Geçerli bir süre girin."));
+        if (selectedAssets.length === 0 && !includeInterestCheckbox.checked) return showError(getTranslation('errorNoAssets', "Lütfen en az bir varlık seçin veya faizi dahil edin."));
+        
+        disclaimerModal.classList.remove('hidden');
+    });
+
+    acceptBtn.addEventListener('click', () => {
+        disclaimerModal.classList.add('hidden');
+        calculateAndDisplayResults();
+    });
+
+    declineBtn.addEventListener('click', () => {
+        disclaimerModal.classList.add('hidden');
+    });
+
+    closeModalBtn.addEventListener('click', () => errorModal.classList.add('hidden'));
+    showMoreBtn.addEventListener('click', (e) => {
+        document.querySelectorAll('#currency-list .asset-item.hidden').forEach(item => item.classList.remove('hidden'));
+        e.target.style.display = 'none';
+    });
+    
+    assetSearchInput.addEventListener('input', (e) => {
+        const searchTerm = e.target.value.toLowerCase();
+        document.querySelectorAll('.asset-item').forEach(item => {
+            item.style.display = item.dataset.name.includes(searchTerm) ? 'flex' : 'none';
+        });
+    });
+
+    assetPanels.addEventListener('change', (e) => {
+        if (e.target.classList.contains('select-all-tab')) {
+            const isChecked = e.target.checked;
+            const panel = e.target.closest('.asset-category-panel');
+            panel.querySelectorAll('input[type="checkbox"]:not(.select-all-tab)').forEach(checkbox => checkbox.checked = isChecked);
+        }
+    });
+    
+    selectAllGlobalCheckbox.addEventListener('change', (e) => {
+        const isChecked = e.target.checked;
+        document.querySelectorAll('#asset-panels input[type="checkbox"]').forEach(checkbox => {
+            checkbox.checked = isChecked;
+        });
+    });
+
+    languageSwitcher.addEventListener('click', (e) => {
+        if (e.target.dataset.lang) {
+            changeLanguage(e.target.dataset.lang);
+        }
+    });
+
+</script>
+</body>
+</html>
