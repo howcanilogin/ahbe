@@ -50,7 +50,7 @@
 
     <div class="text-center mb-6">
       <h1 class="text-3xl md:text-4xl font-bold text-gray-800" data-translate-key="mainTitle">Yatırım Getirisi Hesaplayıcı</h1>
-      <p class="text-gray-500 mt-2" data-translate-key="subtitle">Kripto, maden, döviz ve faiz getirisi karşılaştırma aracı.</p>
+      <p class="text-gray-500 mt-2" data-translate-key="subtitle">Kripto, döviz ve faiz getirisi karşılaştırma aracı.</p>
     </div>
 
     <form id="calculator-form" class="space-y-6">
@@ -104,18 +104,10 @@
             <div id="currency-list" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3"></div>
             <button type="button" id="show-more-assets" class="text-indigo-600 text-sm font-semibold mt-3 w-full text-center hover:text-indigo-500" data-translate-key="showMore"> + Daha Fazla Göster</button>
         </div>
-        <!-- Değerli Maden Bölümü -->
-        <div class="p-4 border rounded-lg bg-gray-50 asset-category-panel">
-            <div class="flex justify-between items-center mb-3">
-                <h3 class="font-semibold text-gray-800" data-translate-key="metals">Değerli Maden</h3>
-                <label class="flex items-center text-sm"><input type="checkbox" class="select-all-tab mr-1 custom-checkbox appearance-none border-2 border-gray-300 rounded"><span data-translate-key="selectAll">Tümünü Seç</span></label>
-            </div>
-            <div id="metal-list" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3"></div>
-        </div>
         <!-- Kripto Para Bölümü -->
         <div class="p-4 border rounded-lg bg-gray-50 asset-category-panel">
             <div class="flex justify-between items-center mb-3">
-                <h3 class="font-semibold text-gray-800" data-translate-key="crypto">Kripto Para</h3>
+                <h3 class="font-semibold text-gray-800" data-translate-key="crypto">Kripto Para & Altın</h3>
                 <label class="flex items-center text-sm"><input type="checkbox" class="select-all-tab mr-1 custom-checkbox appearance-none border-2 border-gray-300 rounded"><span data-translate-key="selectAll">Tümünü Seç</span></label>
             </div>
             <div id="crypto-list" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3"></div>
@@ -132,7 +124,7 @@
     <div id="results-section" class="hidden mt-8">
       <div class="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 rounded-lg mb-4">
         <p class="font-bold" data-translate-key="dataSourceTitle">Veri Kaynağı Bilgisi</p>
-        <p data-translate-key="dataSourceDesc">Anlık döviz ve kripto verileri API'lerden alınır. Geçmişe dönük tüm hesaplamalar (döviz, maden, kripto) simüle edilmiş veritabanları üzerinden yapılır.</p>
+        <p data-translate-key="dataSourceDesc">Anlık veriler API'lerden, geçmiş veriler ise sizin yönettiğiniz Firestore veritabanından alınır. Geçmiş veri bulunamazsa, API'den en yakın tarihli veri kullanılır.</p>
       </div>
       <h2 id="date-range" class="text-xl font-semibold text-gray-700 text-center mb-4"></h2>
       <div class="grid grid-cols-1 gap-6">
@@ -189,26 +181,20 @@
     </div>
   </div>
 
-<script>
+<script type="module">
+    // Firebase SDK'ları
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
     const FRANKFURTER_API_URL = 'https://api.frankfurter.app';
     const COINGECKO_API_URL = 'https://api.coingecko.com/api/v3';
 
     // --- VERİ KAYNAKLARI ---
-    const PRECIOUS_METALS_DB = {
-        'XAUTRY': { '2020-01-31': 298.5, '2020-12-31': 454.1, '2021-12-31': 780.2, '2022-12-31': 1096.0, '2023-06-30': 1610.0, '2023-12-31': 1956.0, '2024-01-31': 2040.0, '2024-02-29': 2055.0, '2024-03-31': 2245.0, '2024-04-30': 2420.0, '2024-05-31': 2410.0, '2024-06-30': 2460.0, '2024-07-31': 2495.0, '2024-08-15': 2520.0, '2024-08-31': 2550.0, '2024-09-30': 2580.0, '2024-10-31': 2610.0, '2024-11-30': 2650.0, '2024-12-31': 2700.0, '2025-01-31': 2900.0, '2025-02-28': 3100.0, '2025-03-31': 3400.0, '2025-04-30': 3700.0, '2025-05-31': 3900.0, '2025-06-30': 4100.0, '2025-07-31': 4250.0, '2025-08-15': 4350.0, '2025-08-16': 4374.0 },
-        'XAGTRY': { '2020-01-31': 3.7, '2020-12-31': 6.1, '2021-12-31': 10.2, '2022-12-31': 13.9, '2023-06-30': 19.5, '2023-12-31': 23.0, '2024-01-31': 23.8, '2024-02-29': 24.5, '2024-03-31': 26.2, '2024-04-30': 28.0, '2024-05-31': 30.5, '2024-06-30': 31.2, '2024-07-31': 32.0, '2024-08-15': 32.5, '2024-08-31': 32.8, '2024-09-30': 33.5, '2024-10-31': 34.0, '2024-11-30': 34.5, '2024-12-31': 35.0, '2025-01-31': 38.0, '2025-02-28': 40.0, '2025-03-31': 42.5, '2025-04-30': 44.0, '2025-05-31': 46.0, '2025-06-30': 47.5, '2025-07-31': 48.5, '2025-08-15': 49.5, '2025-08-16': 49.77 }
-    };
-    const CRYPTO_DB = {
-        'bitcoin': { '2020-01-31': 145000, '2020-12-31': 215000, '2021-12-31': 630000, '2022-12-31': 315000, '2023-12-31': 1200000, '2024-06-30': 1900000, '2024-12-31': 2100000, '2025-08-16': 2300000 },
-        'ethereum': { '2020-01-31': 2800, '2020-12-31': 5500, '2021-12-31': 50000, '2022-12-31': 22000, '2023-12-31': 67000, '2024-06-30': 100000, '2024-12-31': 120000, '2025-08-16': 115000 },
-        'solana': { '2021-01-31': 30, '2021-12-31': 2300, '2022-12-31': 185, '2023-12-31': 3000, '2024-06-30': 4000, '2024-12-31': 4500, '2025-08-16': 5200 },
-        'ripple': { '2020-01-31': 1.5, '2020-12-31': 1.7, '2021-12-31': 11, '2022-12-31': 6.3, '2023-12-31': 18, '2024-06-30': 15, '2024-12-31': 25, '2025-08-16': 16 },
-        'cardano': { '2020-01-31': 0.4, '2020-12-31': 1.3, '2021-12-31': 17, '2022-12-31': 4.8, '2023-12-31': 17.5, '2024-06-30': 12, '2024-12-31': 28, '2025-08-16': 14 },
-        'dogecoin': { '2020-01-31': 0.02, '2020-12-31': 0.03, '2021-12-31': 2.3, '2022-12-31': 1.3, '2023-12-31': 2.7, '2024-06-30': 3.8, '2024-12-31': 4.5, '2025-08-16': 4 }
-    };
     const CRYPTO_INFO = {
         'bitcoin': { name: 'Bitcoin', symbol: 'BTC', logo: 'https://assets.coingecko.com/coins/images/1/large/bitcoin.png' },
         'ethereum': { name: 'Ethereum', symbol: 'ETH', logo: 'https://assets.coingecko.com/coins/images/279/large/ethereum.png' },
+        'tether-gold': { name: 'Tether Gold', symbol: 'XAUT', logo: 'https://assets.coingecko.com/coins/images/10481/large/tether-gold.png' },
         'solana': { name: 'Solana', symbol: 'SOL', logo: 'https://assets.coingecko.com/coins/images/4128/large/solana.png' },
         'ripple': { name: 'XRP', symbol: 'XRP', logo: 'https://static.crypto.com/token/icons/xrp/color_icon.png' },
         'cardano': { name: 'Cardano', symbol: 'ADA', logo: 'https://assets.coingecko.com/coins/images/975/large/cardano.png' },
@@ -231,6 +217,7 @@
     let CURRENCY_INFO = {};
     let ALL_ASSETS_INFO = {};
     let currentLang = 'tr';
+    let db; // Firestore instance
 
     // DOM Elementleri
     const form = document.getElementById('calculator-form');
@@ -266,7 +253,7 @@
     // --- ÇOKLU DİL DESTEĞİ ---
     const translations = {
         mainTitle: { tr: 'Yatırım Getirisi Hesaplayıcı', en: 'Investment Return Calculator', de: 'Anlagerendite-Rechner', fr: 'Calculateur de Retour sur Investissement', zh: '投资回报计算器', ja: '投資収益計算機', ko: '투자 수익 계산기', ar: 'حاسبة عائد الاستثمار' },
-        subtitle: { tr: 'Kripto, maden, döviz ve faiz getirisi karşılaştırma aracı.', en: 'Crypto, metal, forex, and interest return comparison tool.', de: 'Vergleichs-Tool für Krypto-, Metall-, Devisen- und Zinsrenditen.', fr: 'Outil de comparaison de rendement pour crypto, métaux, devises et intérêts.', zh: '加密货币、贵金属、外汇和利息回报比较工具。', ja: '暗号資産、貴金属、外国為替、利子収益の比較ツール。', ko: '암호화폐, 귀금속, 외환 및 이자 수익 비교 도구.', ar: 'أداة مقارنة عوائد العملات المشفرة والمعادن والعملات الأجنبية والفوائد.' },
+        subtitle: { tr: 'Kripto, döviz ve faiz getirisi karşılaştırma aracı.', en: 'Crypto, forex, and interest return comparison tool.', de: 'Vergleichs-Tool für Krypto-, Devisen- und Zinsrenditen.', fr: 'Outil de comparaison de rendement pour crypto, devises et intérêts.', zh: '加密货币、外汇和利息回报比较工具。', ja: '暗号資産、外国為替、利子収益の比較ツール。', ko: '암호화폐, 외환 및 이자 수익 비교 도구.', ar: 'أداة مقارنة عوائد العملات المشفرة والعملات الأجنبية والفوائد.' },
         marketDataTitle: { tr: 'Piyasa Verileri', en: 'Market Data', de: 'Marktdaten', fr: 'Données du Marché', zh: '市场数据', ja: '市場データ', ko: '시장 데이터', ar: 'بيانات السوق' },
         investmentAmount: { tr: 'Yatırım Miktarı (TL)', en: 'Investment Amount (TRY)', de: 'Anlagebetrag (TRY)', fr: 'Montant de l\'investissement (TRY)', zh: '投资金额 (TRY)', ja: '投資額 (TRY)', ko: '투자 금액 (TRY)', ar: 'مبلغ الاستثمار (ليرة تركية)' },
         duration: { tr: 'Süre (Ay)', en: 'Duration (Months)', de: 'Dauer (Monate)', fr: 'Durée (Mois)', zh: '期限 (月)', ja: '期間 (月)', ko: '기간 (개월)', ar: 'المدة (أشهر)' },
@@ -278,13 +265,12 @@
         searchPlaceholder: { tr: 'Varlık ara...', en: 'Search for asset...', de: 'Anlage suchen...', fr: 'Rechercher un actif...', zh: '搜索资产...', ja: '資産を検索...', ko: '자산 검색...', ar: 'ابحث عن أصل...' },
         selectAllGlobal: { tr: 'Hepsini Seç', en: 'Select All', de: 'Alle auswählen', fr: 'Tout sélectionner', zh: '全选', ja: 'すべて選択', ko: '전체 선택', ar: 'تحديد الكل' },
         forex: { tr: 'Döviz', en: 'Forex', de: 'Devisen', fr: 'Devises', zh: '外汇', ja: '外国為替', ko: '외환', ar: 'العملات الأجنبية' },
-        metals: { tr: 'Değerli Maden', en: 'Precious Metal', de: 'Edelmetall', fr: 'Métal Précieux', zh: '贵金属', ja: '貴金属', ko: '귀금속', ar: 'المعادن الثمينة' },
-        crypto: { tr: 'Kripto Para', en: 'Cryptocurrency', de: 'Kryptowährung', fr: 'Crypto-monnaie', zh: '加密货币', ja: '暗号資産', ko: '암호화폐', ar: 'العملات المشفرة' },
+        crypto: { tr: 'Kripto Para & Altın', en: 'Cryptocurrency & Gold', de: 'Kryptowährung & Gold', fr: 'Crypto-monnaie & Or', zh: '加密货币和黄金', ja: '暗号資産と金', ko: '암호화폐 및 금', ar: 'العملات المشفرة والذهب' },
         selectAll: { tr: 'Tümünü Seç', en: 'Select All', de: 'Alle auswählen', fr: 'Tout sélectionner', zh: '全选', ja: 'すべて選択', ko: '전체 선택', ar: 'تحديد الكل' },
         showMore: { tr: '+ Daha Fazla Göster', en: '+ Show More', de: '+ Mehr anzeigen', fr: '+ Afficher plus', zh: '+ 显示更多', ja: '+ もっと見る', ko: '+ 더 보기', ar: '+ إظهار المزيد' },
         calculate: { tr: 'Hesapla', en: 'Calculate', de: 'Berechnen', fr: 'Calculer', zh: '计算', ja: '計算', ko: '계산', ar: 'احسب' },
         dataSourceTitle: { tr: 'Veri Kaynağı Bilgisi', en: 'Data Source Information', de: 'Datenquelleninformation', fr: 'Information sur la Source des Données', zh: '数据来源信息', ja: 'データソース情報', ko: '데이터 소스 정보', ar: 'معلومات مصدر البيانات' },
-        dataSourceDesc: { tr: "Anlık döviz ve kripto verileri API'lerden alınır. Geçmişe dönük tüm hesaplamalar (döviz, maden, kripto) simüle edilmiş veritabanları üzerinden yapılır.", en: "Live forex and crypto data are fetched from APIs. All historical calculations (forex, metal, crypto) are made via simulated databases.", de: "Live-Devisen- und Kryptodaten werden von APIs abgerufen. Alle historischen Berechnungen (Devisen, Metalle, Krypto) erfolgen über simulierte Datenbanken.", fr: "Les données en direct sur les devises et les cryptomonnaies sont extraites des API. Tous les calculs historiques (devises, métaux, crypto) sont effectués via des bases de données simulées.", zh: "实时外汇和加密数据从API获取。所有历史计算（外汇、贵金属、加密货币）均通过模拟数据库进行。", ja: "ライブの為替および暗号資産データはAPIから取得されます。すべての過去の計算（為替、貴金属、暗号資産）は、シミュレートされたデータベースを介して行われます。", ko: "실시간 외환 및 암호화폐 데이터는 API에서 가져옵니다. 모든 과거 계산(외환, 귀금속, 암호화폐)은 시뮬레이션된 데이터베이스를 통해 이루어집니다.", ar: "يتم جلب بيانات العملات الأجنبية والعملات المشفرة المباشرة من واجهات برمجة التطبيقات. تتم جميع الحسابات التاريخية (العملات الأجنبية، المعادن، العملات المشفرة) عبر قواعد بيانات محاكاة." },
+        dataSourceDesc: { tr: "Anlık veriler API'lerden, geçmiş veriler ise sizin yönettiğiniz Firestore veritabanından alınır. Geçmiş veri bulunamazsa, API'den en yakın tarihli veri kullanılır.", en: "Live data is fetched from APIs, while historical data is taken from the Firestore database you manage. If historical data isn't found, the closest available data from the API is used.", de: "Live-Daten werden von APIs abgerufen, während historische Daten aus der von Ihnen verwalteten Firestore-Datenbank stammen. Wenn keine historischen Daten gefunden werden, werden die nächstgelegenen verfügbaren Daten von der API verwendet.", fr: "Les données en direct sont extraites des API, tandis que les données historiques proviennent de la base de données Firestore que vous gérez. Si les données historiques ne sont pas trouvées, les données les plus proches disponibles via l'API sont utilisées.", zh: "实时数据从API获取，历史数据从您管理的Firestore数据库获取。如果找不到历史数据，则使用API提供的最接近的数据。", ja: "ライブデータはAPIから取得され、過去のデータはあなたが管理するFirestoreデータベースから取得されます。過去のデータが見つからない場合は、APIから利用可能な最も近いデータが使用されます。", ko: "실시간 데이터는 API에서 가져오고, 과거 데이터는 관리하는 Firestore 데이터베이스에서 가져옵니다. 과거 데이터를 찾을 수 없는 경우 API에서 가장 가까운 데이터를 사용합니다.", ar: "يتم جلب البيانات المباشرة من واجهات برمجة التطبيقات، بينما يتم أخذ البيانات التاريخية من قاعدة بيانات Firestore التي تديرها. إذا لم يتم العثور على بيانات تاريخية، يتم استخدام أقرب البيانات المتاحة من واجهة برمجة التطبيقات." },
         tableAsset: { tr: 'Varlık', en: 'Asset', de: 'Anlage', fr: 'Actif', zh: '资产', ja: '資産', ko: '자산', ar: 'الأصل' },
         tableReturn: { tr: 'Getiri (%)', en: 'Return (%)', de: 'Rendite (%)', fr: 'Rendement (%)', zh: '回报率 (%)', ja: 'リターン (%)', ko: '수익률 (%)', ar: 'العائد (٪)' },
         tableProfit: { tr: 'Kar/Zarar (₺)', en: 'Profit/Loss (TRY)', de: 'Gewinn/Verlust (TRY)', fr: 'Profit/Perte (TRY)', zh: '盈/亏 (TRY)', ja: '利益/損失 (TRY)', ko: '손익 (TRY)', ar: 'الربح/الخسارة (ليرة تركية)' },
@@ -294,18 +280,15 @@
         close: { tr: 'Kapat', en: 'Close', de: 'Schließen', fr: 'Fermer', zh: '关闭', ja: '閉じる', ko: '닫기', ar: 'إغلاق' },
         loading: { tr: 'Yükleniyor...', en: 'Loading...', de: 'Wird geladen...', fr: 'Chargement...', zh: '加载中...', ja: '読み込み中...', ko: '로딩 중...', ar: 'جار التحميل...' },
         monthsReturn: { tr: 'Aylık Getiri', en: 'Month Return', de: 'Monatsrendite', fr: 'Rendement Mensuel', zh: '月度回报', ja: '月間リターン', ko: '월간 수익률', ar: 'عائد شهري' },
-        asset_XAUTRY: { tr: 'Gram Altın', en: 'Gram Gold', de: 'Gramm Gold', fr: 'Gramme d\'Or', zh: '克黄金', ja: 'グラムゴールド', ko: '그램 골드', ar: 'جرام ذهب' },
-        asset_XAGTRY: { tr: 'Gram Gümüş', en: 'Gram Silver', de: 'Gramm Silber', fr: 'Gramme d\'Argent', zh: '克白银', ja: 'グラムシルバー', ko: '그램 실버', ar: 'جرام فضة' },
-        asset_XPTTRY: { tr: 'Gram Platin', en: 'Gram Platinum', de: 'Gramm Platin', fr: 'Gramme de Platine', zh: '克铂金', ja: 'グラムプラチナ', ko: '그램 플래티넘', ar: 'جرام بلاتين' },
-        asset_XPDTRY: { tr: 'Gram Paladyum', en: 'Gram Palladium', de: 'Gramm Palladium', fr: 'Gramme de Palladium', zh: '克钯金', ja: 'グラムパラジウム', ko: '그램 팔라듐', ar: 'جرام بلاديوم' },
         asset_bitcoin: { tr: 'Bitcoin', en: 'Bitcoin', de: 'Bitcoin', fr: 'Bitcoin', zh: '比特币', ja: 'ビットコイン', ko: '비트코인', ar: 'بيتكوين' },
         asset_ethereum: { tr: 'Ethereum', en: 'Ethereum', de: 'Ethereum', fr: 'Ethereum', zh: '以太坊', ja: 'イーサリアム', ko: '이더리움', ar: 'إيثريوم' },
+        'asset_tether-gold': { tr: 'Tether Gold (Altın)', en: 'Tether Gold', de: 'Tether Gold', fr: 'Tether Gold', zh: 'Tether Gold', ja: 'Tether Gold', ko: 'Tether Gold', ar: 'Tether Gold' },
         asset_solana: { tr: 'Solana', en: 'Solana', de: 'Solana', fr: 'Solana', zh: '索拉纳', ja: 'ソラナ', ko: '솔라나', ar: 'سولانا' },
         asset_ripple: { tr: 'XRP', en: 'XRP', de: 'XRP', fr: 'XRP', zh: '瑞波币', ja: 'リップル', ko: '리플', ar: 'ريبل' },
         asset_cardano: { tr: 'Cardano', en: 'Cardano', de: 'Cardano', fr: 'Cardano', zh: '卡尔达诺', ja: 'カルダノ', ko: '카르다노', ar: 'كاردانو' },
         asset_dogecoin: { tr: 'Dogecoin', en: 'Dogecoin', de: 'Dogecoin', fr: 'Dogecoin', zh: '狗狗币', ja: 'ドージコイン', ko: '도지코인', ar: 'دجكوين' },
         disclaimerTitle: { tr: "DİKKAT: GEÇMİŞ PERFORMANS GELECEĞİN GÖSTERGESİ DEĞİLDİR", en: "ATTENTION: PAST PERFORMANCE IS NOT INDICATIVE OF FUTURE RESULTS", de: "ACHTUNG: VERGANGENE PERFORMANCE IST KEIN INDIKATOR FÜR ZUKÜNFTIGE ERGEBNISSE", fr: "ATTENTION : LES PERFORMANCES PASSÉES NE PRÉJUGENT PAS DES RÉSULTATS FUTURS", zh: "注意：过往表现并非未来结果的指标", ja: "注意：過去のパフォーマンスは将来の結果を示すものではありません", ko: "주의: 과거의 성과는 미래의 결과를 나타내지 않습니다", ar: "تنبيه: الأداء السابق ليس مؤشراً على النتائج المستقبلية" },
-        disclaimerText: { tr: `<p>Bu araç, yalnızca <strong>geçmiş dönemlerdeki</strong> yatırım getirilerini simüle eder. Gösterilen sonuçlar:</p><ol class="list-decimal list-inside space-y-1 pl-2"><li>Gelecekteki kazanç garantisi veya tavsiyesi <strong>değildir</strong>,</li><li>Piyasa riski, enflasyon, düzenleyici değişiklikler vb. faktörleri içermez,</li><li>Komisyon, vergi veya işlem maliyetlerini hesaba katmaz.</li></ol><p>Kripto paralar, emtialar ve döviz piyasaları <strong>yüksek volatilite</strong> içerir. Geçmiş performans, gelecek sonuçların güvenilir bir öngörüsü değildir. Bu araçla elde edilen bilgiler <strong>kişisel yatırım danışmanlığı</strong> yerine geçmez. Yatırım kararlarınız öncesinde lütfen bağımsız bir finansal danışmana ve güncel resmi kaynaklara başvurun.</p><p>Hesaplama yaparak, bu uyarıları okuduğunuzu ve yatırım risklerini tamamen kendi sorumluluğunuzda üstlendiğinizi kabul etmiş olursunuz.</p>`, en: `<p>This tool only simulates investment returns from <strong>past periods</strong>. The results shown:</p><ol class="list-decimal list-inside space-y-1 pl-2"><li>Are <strong>not</strong> a guarantee or recommendation of future earnings,</li><li>Do not include factors such as market risk, inflation, regulatory changes, etc.,</li><li>Do not account for commissions, taxes, or transaction costs.</li></ol><p>Cryptocurrencies, commodities, and foreign exchange markets involve <strong>high volatility</strong>. Past performance is not a reliable predictor of future results. The information obtained with this tool does <strong>not</strong> substitute for <strong>personal investment advice</strong>. Please consult an independent financial advisor and current official sources before making investment decisions.</p><p>By calculating, you acknowledge that you have read these warnings and assume all investment risks at your own responsibility.</p>`, ar: `<p>هذه الأداة تحاكي فقط عوائد الاستثمار من <strong>الفترات السابقة</strong>. النتائج المعروضة:</p><ol class="list-decimal list-inside space-y-1 pl-2" style="padding-right: 1rem;"><li><strong>ليست</strong> ضمانًا أو توصية بالأرباح المستقبلية،</li><li>لا تشمل عوامل مثل مخاطر السوق، التضخم، التغييرات التنظيمية، إلخ،</li><li>لا تأخذ في الحسبان العمولات، الضرائب، أو تكاليف المعاملات.</li></ol><p>تنطوي العملات المشفرة والسلع وأسواق الصرف الأجنبي على <strong>تقلبات عالية</strong>. الأداء السابق ليس مؤشرًا موثوقًا للنتائج المستقبلية. المعلومات التي يتم الحصول عليها باستخدام هذه الأداة <strong>لا تحل محل المشورة الاستثمارية الشخصية</strong>. يرجى استشارة مستشار مالي مستقل ومصادر رسمية حديثة قبل اتخاذ قرارات الاستثمار.</p><p>بإجراء الحساب، فإنك تقر بأنك قد قرأت هذه التحذيرات وتتحمل جميع مخاطر الاستثمار على مسؤوليتك الخاصة.</p>` },
+        disclaimerText: { tr: `<p>Bu araç, yalnızca <strong>geçmiş dönemlerdeki</strong> yatırım getirilerini simüle eder. Gösterilen sonuçlar:</p><ol class="list-decimal list-inside space-y-1 pl-2"><li>Gelecekteki kazanç garantisi veya tavsiyesi <strong>değildir</strong>,</li><li>Piyasa riski, enflasyon, düzenleyici değişiklikler vb. faktörleri içermez,</li><li>Komisyon, vergi veya işlem maliyetlerini hesaba katmaz.</li></ol><p>Kripto paralar, emtialar ve döviz piyasaları <strong>yüksek volatilite</strong> içerir. Geçmiş performans, gelecek sonuçların güvenilir bir öngörüsü değildir. Bu araçla elde edilen bilgiler <strong>kişisel yatırım danışmanlığı</strong> yerine geçmez. Yatırım kararlarınız öncesinde lütfen bağımsız bir finansal danışmana ve güncel resmi kaynaklara başvurun.</p><p>Hesaplama yaparak, bu uyarıları okuduğunuzu ve yatırım risklerini tamamen kendi sorumluluğunuzda üstlendiğinizi kabul etmiş olursunuz.</p>`, en: `<p>This tool only simulates investment returns from <strong>past periods</strong>. The results shown:</p><ol class="list-decimal list-inside space-y-1 pl-2"><li>Are <strong>not</strong> a guarantee or recommendation of future earnings,</li><li>Do not include factors such as market risk, inflation, regulatory changes, etc.,</li><li>Do not account for commissions, taxes, or transaction costs.</li></ol><p>Cryptocurrencies, commodities, and foreign exchange markets involve <strong>high volatility</strong>. Past performance is not a reliable predictor of future results. The information obtained with this tool does <strong>not</strong> substitute for <strong>personal investment advice</strong>. Please consult an independent financial advisor and current official sources before making investment decisions.</p><p>By calculating, you have read these warnings and assume all investment risks at your own responsibility.</p>`, ar: `<p>هذه الأداة تحاكي فقط عوائد الاستثمار من <strong>الفترات السابقة</strong>. النتائج المعروضة:</p><ol class="list-decimal list-inside space-y-1 pl-2" style="padding-right: 1rem;"><li><strong>ليست</strong> ضمانًا أو توصية بالأرباح المستقبلية،</li><li>لا تشمل عوامل مثل مخاطر السوق، التضخم، التغييرات التنظيمية، إلخ،</li><li>لا تأخذ في الحسبان العمولات، الضرائب، أو تكاليف المعاملات.</li></ol><p>تنطوي العملات المشفرة والسلع وأسواق الصرف الأجنبي على <strong>تقلبات عالية</strong>. الأداء السابق ليس مؤشرًا موثوقًا للنتائج المستقبلية. المعلومات التي يتم الحصول عليها باستخدام هذه الأداة <strong>لا تحل محل المشورة الاستثمارية الشخصية</strong>. يرجى استشارة مستشار مالي مستقل ومصادر رسمية حديثة قبل اتخاذ قرارات الاستثمار.</p><p>بإجراء الحساب، فإنك تقر بأنك قد قرأت هذه التحذيرات وتتحمل جميع مخاطر الاستثمار على مسؤوليتك الخاصة.</p>` },
         accept: { tr: 'Kabul Ediyorum', en: 'I Agree', de: 'Ich stimme zu', fr: 'J\'accepte', zh: '我同意', ja: '同意します', ko: '동의합니다', ar: 'أوافق' },
         decline: { tr: 'Kabul Etmiyorum', en: 'I Decline', de: 'Ich lehne ab', fr: 'Je refuse', zh: '我不同意', ja: '同意しません', ko: '동의하지 않습니다', ar: 'لا أوافق' },
     };
@@ -343,7 +326,26 @@
     }
 
     // --- BAŞLANGIÇ FONKSİYONLARI ---
+    async function setupFirebase() {
+        try {
+            const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+            const app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            const auth = getAuth(app);
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                await signInWithCustomToken(auth, __initial_auth_token);
+            } else {
+                await signInAnonymously(auth);
+            }
+            console.log("Firebase initialized and authenticated.");
+        } catch (error) {
+            console.error("Firebase initialization failed:", error);
+            showError("Veritabanı bağlantısı kurulamadı. Lütfen sayfayı yenileyin.");
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', async () => {
+      await setupFirebase();
       await initializeAssetSelectors();
       await updateMarketWidget();
       baseDateInput.value = new Date().toISOString().split('T')[0];
@@ -366,8 +368,6 @@
             
             ALL_ASSETS_INFO = {
                 ...CURRENCY_INFO,
-                'XAUTRY': { name: 'Gram Altın', logo: 'https://img.icons8.com/fluency/48/gold-bars.png' },
-                'XAGTRY': { name: 'Gram Gümüş', logo: 'https://img.icons8.com/fluency/48/silver-bars.png' },
                 ...CRYPTO_INFO
             };
             
@@ -380,11 +380,9 @@
     
     function rebuildAssetLists() {
         const currencyList = document.getElementById('currency-list');
-        const metalList = document.getElementById('metal-list');
         const cryptoList = document.getElementById('crypto-list');
         
         currencyList.innerHTML = '';
-        metalList.innerHTML = '';
         cryptoList.innerHTML = '';
 
         const popularCurrencies = ['USD', 'EUR', 'GBP', 'CHF', 'CAD', 'AUD', 'JPY', 'SAR', 'AED'];
@@ -395,16 +393,10 @@
             currencyList.innerHTML += createAssetCheckboxHTML(code, translatedName, info.logo, 'asset-logo', ['USD', 'EUR'].includes(code), isHidden);
         });
 
-        ['XAUTRY', 'XAGTRY'].forEach(code => {
-            const info = ALL_ASSETS_INFO[code];
-            const translatedName = getTranslation('asset_' + code, info.name);
-            metalList.innerHTML += createAssetCheckboxHTML(code, translatedName, info.logo, 'metal-logo', ['XAUTRY', 'XAGTRY'].includes(code));
-        });
-
         Object.keys(CRYPTO_INFO).forEach(id => {
             const info = CRYPTO_INFO[id];
             const translatedName = getTranslation('asset_' + id, info.name);
-            cryptoList.innerHTML += createAssetCheckboxHTML(id, translatedName, info.logo, 'crypto-logo', id === 'bitcoin');
+            cryptoList.innerHTML += createAssetCheckboxHTML(id, translatedName, info.logo, 'crypto-logo', ['bitcoin', 'tether-gold'].includes(id));
         });
     }
 
@@ -422,57 +414,46 @@
 
     async function updateMarketWidget() {
         try {
-            const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
-            const yesterdayStr = yesterday.toISOString().split('T')[0];
-            const cryptoIds = Object.keys(CRYPTO_INFO).join(',');
+            const cryptoIds = 'bitcoin,ethereum,tether-gold'; 
 
-            const [frankfurterLatest, frankfurterYesterday, coingeckoData] = await Promise.all([
-                fetch(`${FRANKFURTER_API_URL}/latest?from=EUR&to=TRY,USD`),
-                fetch(`${FRANKFURTER_API_URL}/${yesterdayStr}?from=EUR&to=TRY,USD`),
-                fetch(`${COINGECKO_API_URL}/simple/price?ids=${cryptoIds}&vs_currencies=try&include_24hr_change=true`)
+            const [todayFX, cryptoData] = await Promise.all([
+                fetch(`${FRANKFURTER_API_URL}/latest?from=USD&to=TRY,EUR`).then(res => res.json()),
+                fetch(`${COINGECKO_API_URL}/simple/price?ids=${cryptoIds}&vs_currencies=try&include_24hr_change=true`).then(res => res.json())
             ]);
 
-            if (!frankfurterLatest.ok || !frankfurterYesterday.ok || !coingeckoData.ok) throw new Error("Piyasa verileri alınamadı.");
+            const todayUSDtoTRY = todayFX.rates.TRY;
+            const todayEURtoTRY = todayFX.rates.EUR * todayUSDtoTRY;
             
-            const todayFX = await frankfurterLatest.json();
-            const yesterdayFX = await frankfurterYesterday.json();
-            const crypto = await coingeckoData.json();
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            const yesterdayStr = yesterday.toISOString().split('T')[0];
+            const yesterdayFX = await fetch(`${FRANKFURTER_API_URL}/${yesterdayStr}?from=USD&to=TRY,EUR`).then(res => res.json());
+            const yesterdayUSDtoTRY = yesterdayFX.rates.TRY;
+            const yesterdayEURtoTRY = yesterdayFX.rates.EUR * yesterdayUSDtoTRY;
 
-            const todayUSDtoTRY = todayFX.rates.TRY / todayFX.rates.USD;
-            const yesterdayUSDtoTRY = yesterdayFX.rates.TRY / yesterdayFX.rates.USD;
-            const todayEURtoTRY = todayFX.rates.TRY;
-            const yesterdayEURtoTRY = yesterdayFX.rates.TRY;
-            
-            const goldDates = Object.keys(PRECIOUS_METALS_DB.XAUTRY);
-            const silverDates = Object.keys(PRECIOUS_METALS_DB.XAGTRY);
-            const todayGoldPrice = PRECIOUS_METALS_DB.XAUTRY[goldDates[goldDates.length - 1]];
-            const yesterdayGoldPrice = PRECIOUS_METALS_DB.XAUTRY[goldDates[goldDates.length - 2]];
-            const todaySilverPrice = PRECIOUS_METALS_DB.XAGTRY[silverDates[silverDates.length - 1]];
-            const yesterdaySilverPrice = PRECIOUS_METALS_DB.XAGTRY[silverDates[silverDates.length - 2]];
 
             const widgetData = [
-                { name: 'Dolar (Anlık)', logo: CURRENCY_INFO.USD.logo, today: todayUSDtoTRY, change: todayUSDtoTRY - yesterdayUSDtoTRY, changePercent: ((todayUSDtoTRY - yesterdayUSDtoTRY) / yesterdayUSDtoTRY) * 100 },
-                { name: 'Euro (Anlık)', logo: CURRENCY_INFO.EUR.logo, today: todayEURtoTRY, change: todayEURtoTRY - yesterdayEURtoTRY, changePercent: ((todayEURtoTRY - yesterdayEURtoTRY) / yesterdayEURtoTRY) * 100 },
-                { name: 'Altın (Dün)', logo: ALL_ASSETS_INFO.XAUTRY.logo, today: todayGoldPrice, change: todayGoldPrice - yesterdayGoldPrice, changePercent: ((todayGoldPrice - yesterdayGoldPrice) / yesterdayGoldPrice) * 100 },
-                { name: 'Gümüş (Dün)', logo: ALL_ASSETS_INFO.XAGTRY.logo, today: todaySilverPrice, change: todaySilverPrice - yesterdaySilverPrice, changePercent: ((todaySilverPrice - yesterdaySilverPrice) / yesterdaySilverPrice) * 100 },
-                { name: 'Bitcoin', logo: CRYPTO_INFO.bitcoin.logo, today: crypto.bitcoin.try, changePercent: crypto.bitcoin.try_24h_change },
-                { name: 'Ethereum', logo: CRYPTO_INFO.ethereum.logo, today: crypto.ethereum.try, changePercent: crypto.ethereum.try_24h_change },
+                { name: 'Dolar (Anlık)', logo: CURRENCY_INFO.USD.logo, today: todayUSDtoTRY, changePercent: ((todayUSDtoTRY - yesterdayUSDtoTRY) / yesterdayUSDtoTRY) * 100 },
+                { name: 'Euro (Anlık)', logo: CURRENCY_INFO.EUR.logo, today: todayEURtoTRY, changePercent: ((todayEURtoTRY - yesterdayEURtoTRY) / yesterdayEURtoTRY) * 100 },
+                { name: 'Tether Gold (Anlık)', logo: CRYPTO_INFO['tether-gold'].logo, today: cryptoData['tether-gold'].try, changePercent: cryptoData['tether-gold'].try_24h_change },
+                { name: 'Bitcoin', logo: CRYPTO_INFO.bitcoin.logo, today: cryptoData.bitcoin.try, changePercent: cryptoData.bitcoin.try_24h_change },
+                { name: 'Ethereum', logo: CRYPTO_INFO.ethereum.logo, today: cryptoData.ethereum.try, changePercent: cryptoData.ethereum.try_24h_change },
             ];
 
             marketWidgetContainer.innerHTML = '';
             widgetData.forEach(item => {
                 const changePercent = item.changePercent || 0;
-                const change = item.change !== undefined ? item.change : (item.today * changePercent) / (100 + changePercent);
+                const change = item.today / (1 + changePercent / 100) * (changePercent / 100);
                 const changeClass = changePercent >= 0 ? 'price-up' : 'price-down';
                 const sign = changePercent >= 0 ? '+' : '';
 
                 marketWidgetContainer.innerHTML += `
                     <div class="flex flex-col items-center p-3 bg-white rounded-lg shadow-sm border">
                         <div class="flex items-center font-bold text-gray-800 text-center text-sm">
-                           <img src="${item.logo}" alt="${item.name}" class="${item.name.includes('(') ? 'asset-logo' : 'crypto-logo'} mr-2" onerror="this.style.display='none'">
+                           <img src="${item.logo}" alt="${item.name}" class="crypto-logo mr-2" onerror="this.style.display='none'">
                            <span>${item.name}</span>
                         </div>
-                        <p class="text-lg font-semibold text-gray-900 my-1">${item.today.toLocaleString('tr-TR', {style:'currency', currency:'TRY'})}</p>
+                        <p class="text-lg font-semibold text-gray-900 my-1">${item.today.toLocaleString('tr-TR', {style:'currency', currency:'TRY', maximumFractionDigits: 2})}</p>
                         <div class="flex items-center text-xs font-medium ${changeClass}">
                            <span>${sign}${change.toFixed(2)} ₺</span>
                            <span class="mx-1">|</span>
@@ -483,7 +464,7 @@
             });
 
         } catch (error) {
-            marketWidgetContainer.innerHTML = `<div class="col-span-full text-center text-red-500">${error.message}</div>`;
+            marketWidgetContainer.innerHTML = `<div class="col-span-full text-center text-red-500">Piyasa verileri yüklenemedi: ${error.message}</div>`;
         }
     }
 
@@ -498,20 +479,17 @@
             const startDate = computeStartDate(endDate, months);
             
             const selectedCurrencies = selectedAssets.filter(a => CURRENCY_INFO[a]);
-            const selectedMetals = selectedAssets.filter(a => PRECIOUS_METALS_DB[a]);
             const selectedCryptos = selectedAssets.filter(a => CRYPTO_INFO[a]);
 
-            const [endCurrencyRates, startCurrencyRates, endMetalRates, startMetalRates, endCryptoRates, startCryptoRates] = await Promise.all([
+            const [endCurrencyRates, startCurrencyRates, endCryptoRates, startCryptoRates] = await Promise.all([
                 fetchCurrencyRates(formatDateForAPI(endDate), selectedCurrencies),
                 fetchCurrencyRates(formatDateForAPI(startDate), selectedCurrencies),
-                fetchPreciousMetalRates(formatDateForAPI(endDate), selectedMetals),
-                fetchPreciousMetalRates(formatDateForAPI(startDate), selectedMetals),
                 fetchCryptoRates(endDate, selectedCryptos),
                 fetchCryptoRates(startDate, selectedCryptos)
             ]);
             
-            const startRates = { ...startCurrencyRates, ...startMetalRates, ...startCryptoRates };
-            const endRates = { ...endCurrencyRates, ...endMetalRates, ...endCryptoRates };
+            const startRates = { ...startCurrencyRates, ...startCryptoRates };
+            const endRates = { ...endCurrencyRates, ...endCryptoRates };
 
             const resultsData = processData(amount, startRates, endRates, selectedAssets);
 
@@ -544,7 +522,6 @@
         }
     }
     
-    // GÜNCELLENDİ: Kripto veri çekme fonksiyonu
     async function fetchCryptoRates(date, cryptoIds) {
         if (cryptoIds.length === 0) return {};
         const rates = {};
@@ -556,6 +533,7 @@
         const isToday = targetDate.getTime() >= today.getTime();
 
         if (isToday) {
+            // Fetch live data for today
             const ids = cryptoIds.join(',');
             const res = await fetch(`${COINGECKO_API_URL}/simple/price?ids=${ids}&vs_currencies=try`);
             if (!res.ok) throw new Error(`Canlı kripto verileri alınamadı (API Hatası: ${res.status})`);
@@ -564,18 +542,30 @@
                 if (data[id] && data[id].try) rates[id] = data[id].try;
             }
         } else {
+            // Fetch historical data from Firestore
+            if (!db) {
+                throw new Error("Veritabanı bağlantısı henüz hazır değil.");
+            }
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
             for (const id of cryptoIds) {
-                const db = CRYPTO_DB[id];
-                if (!db) continue;
-                const closestDate = Object.keys(db)
-                    .map(d => new Date(d))
-                    .filter(d => d <= targetDate)
-                    .sort((a, b) => b - a)[0];
-                
-                if (closestDate) {
-                    rates[id] = db[formatDateForAPI(closestDate)];
+                const docRef = doc(db, `/artifacts/${appId}/public/data/crypto_historical_prices/${id}`);
+                const docSnap = await getDoc(docRef);
+
+                if (docSnap.exists() && docSnap.data().prices) {
+                    const prices = docSnap.data().prices;
+                    const closestDate = Object.keys(prices)
+                        .map(d => new Date(d))
+                        .filter(d => d <= targetDate)
+                        .sort((a, b) => b - a)[0];
+                    
+                    if (closestDate) {
+                        rates[id] = prices[formatDateForAPI(closestDate)];
+                    } else {
+                        console.warn(`Firestore'da ${id} için ${targetDate.toLocaleDateString()} öncesine ait veri bulunamadı.`);
+                    }
                 } else {
-                    console.warn(`${id} için ${targetDate.toLocaleDateString()} tarihinde veri bulunamadı.`);
+                     console.warn(`Firestore'da ${id} için veri bulunamadı.`);
                 }
             }
         }
@@ -583,7 +573,7 @@
         const missingCryptos = cryptoIds.filter(id => !rates[id]);
         if (missingCryptos.length > 0) {
             const missingNames = missingCryptos.map(id => CRYPTO_INFO[id].name).join(', ');
-            throw new Error(`${missingNames} için seçilen tarihlerde veri bulunamadı. Lütfen farklı bir tarih aralığı deneyin.`);
+            showError(`${missingNames} için seçilen tarihlerde veri bulunamadı. Lütfen yönetim panelinden veri ekleyin veya farklı bir tarih aralığı deneyin.`);
         }
         
         return rates;
@@ -605,20 +595,6 @@
         return ratesInTry;
     }
 
-    async function fetchPreciousMetalRates(dateStr, metals) {
-        if (metals.length === 0) return {};
-        const rates = {};
-        const date = new Date(dateStr);
-        for (const metal of metals) {
-            const db = PRECIOUS_METALS_DB[metal];
-            if (!db) continue;
-            const closestDate = Object.keys(db).map(d => new Date(d)).filter(d => d <= date).sort((a, b) => b - a)[0];
-            if (closestDate) rates[metal] = db[formatDateForAPI(closestDate)];
-            else throw new Error(`${metal} için ${dateStr} tarihinden önce bir veri bulunamadı.`);
-        }
-        return rates;
-    }
-
     function processData(initialAmount, startRates, endRates, selectedAssets) {
         return selectedAssets
             .filter(asset => startRates[asset] && endRates[asset])
@@ -634,24 +610,29 @@
     // --- GÖRSELLEŞTİRME FONKSİYONLARI ---
     function displayTable(data) {
         tableBody.innerHTML = '';
+        const amount = parseFloat(amountInput.value) || 0;
         data.forEach((item, index) => {
             const isProfit = item.profitLossTL >= 0;
             const info = ALL_ASSETS_INFO[item.name] || { name: item.name };
             const isInterest = item.name.startsWith('Faiz');
             const logoHtml = info.logo ? `<img src="${info.logo}" alt="${info.name}" class="${CRYPTO_INFO[item.name] ? 'crypto-logo' : 'asset-logo'} mr-2" onerror="this.style.display='none'">` : '';
+            
+            const startPriceDisplay = isInterest || !item.startPrice ? '-' : item.startPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) + '₺';
+            const endPriceDisplay = isInterest || !item.endPrice ? '-' : item.endPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) + '₺';
+
             const row = `
               <tr class="transition ${index === 0 && isProfit ? 'best-performer' : 'hover:bg-gray-50'}">
                 <td class="py-3 px-4 font-semibold text-gray-800">
                   <div class="flex items-center">
                     ${logoHtml}
-                    <span>${info.name}</span>
+                    <span>${getTranslation('asset_' + item.name.toLowerCase(), info.name)}</span>
                     ${index === 0 && isProfit ? '<span class="ml-auto text-xs bg-green-200 text-green-800 font-bold px-2 py-1 rounded-full">🏆 En İyi</span>' : ''}
                   </div>
                 </td>
-                <td class="py-3 px-4 text-right text-gray-600">${isInterest || !item.startPrice ? '-' : item.startPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '₺'}</td>
-                <td class="py-3 px-4 text-right text-gray-600">${isInterest || !item.endPrice ? '-' : item.endPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '₺'}</td>
-                <td class="py-3 px-4 text-right font-semibold ${isProfit ? 'text-green-600' : 'text-red-600'}">${isProfit ? '+' : ''}${item.profitLossTL.toFixed(2)}₺</td>
                 <td class="py-3 px-4 text-right font-semibold ${isProfit ? 'text-green-600' : 'text-red-600'}">${isProfit ? '+' : ''}${item.profitLossPercent.toFixed(2)}%</td>
+                <td class="py-3 px-4 text-right font-semibold ${isProfit ? 'text-green-600' : 'text-red-600'}">${isProfit ? '+' : ''}${item.profitLossTL.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}₺</td>
+                 <td class="py-3 px-4 text-right text-gray-600">${startPriceDisplay}</td>
+                <td class="py-3 px-4 text-right text-gray-600">${endPriceDisplay}</td>
               </tr>`;
             tableBody.insertAdjacentHTML('beforeend', row);
         });
@@ -659,7 +640,7 @@
 
     function displayChart(data){
       if (myChart) myChart.destroy();
-      const labels = data.map(d => ALL_ASSETS_INFO[d.name]?.name || d.name);
+      const labels = data.map(d => getTranslation('asset_' + d.name.toLowerCase(), ALL_ASSETS_INFO[d.name]?.name || d.name));
       const profitLossData = data.map(d => Number(d.profitLossTL.toFixed(2)));
       const ctx = chartCanvas.getContext('2d');
       myChart = new Chart(ctx, {
@@ -687,7 +668,7 @@
 
     function displayPieChart(data) {
         if (myPieChart) myPieChart.destroy();
-        const labels = data.map(d => ALL_ASSETS_INFO[d.name]?.name || d.name);
+        const labels = data.map(d => getTranslation('asset_' + d.name.toLowerCase(), ALL_ASSETS_INFO[d.name]?.name || d.name));
         const finalValues = data.map(d => Number((amountInput.valueAsNumber + d.profitLossTL).toFixed(2)));
         const ctx = pieChartCanvas.getContext('2d');
         myPieChart = new Chart(ctx, {
@@ -718,7 +699,7 @@
     }
 
     // --- YARDIMCI FONKSİYONLAR VE EVENT LISTENERS ---
-    function getStopajRate(months) { if (months <= 6) return 0.175; if (months <= 12) return 0.15; return 0.10; }
+    function getStopajRate(months) { if (months <= 6) return 0.05; if (months <= 12) return 0.03; return 0.00; }
     function computeStartDate(endDate, monthsBack){ const d = new Date(endDate); d.setMonth(d.getMonth() - monthsBack); return d; }
     function formatDateForAPI(date){ return date.toISOString().split('T')[0]; }
     function formatDateForDisplay(date){ return new Intl.DateTimeFormat(currentLang).format(date); }
@@ -784,3 +765,4 @@
 </script>
 </body>
 </html>
+
