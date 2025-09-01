@@ -8,8 +8,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; }
-        .modal { transition: opacity 0.25s ease; }
-        .modal-content { transition: transform 0.25s ease; }
         .loader { border: 2px solid #f3f3f3; border-top: 2px solid #4f46e5; border-radius: 50%; width: 16px; height: 16px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
@@ -55,12 +53,14 @@
                     </form>
                     <div id="status-message" class="text-center p-2 rounded-lg"></div>
 
-                    <h2 class="text-xl font-semibold text-gray-700 border-b pb-2 pt-4">3. Toplu Veri Çek (API)</h2>
+                    <h2 class="text-xl font-semibold text-gray-700 border-b pb-2 pt-4">3. Otomatik Veri Senkronizasyonu</h2>
                     <div class="space-y-3">
-                        <p class="text-sm text-gray-600">Seçili varlık için belirlediğiniz tarih aralığındaki tüm günlük verileri CoinGecko API'sinden otomatik olarak çekin.</p>
-                         <button id="bulk-fetch-btn" disabled class="w-full bg-green-600 text-white font-bold py-3 rounded-lg transition hover:bg-green-700 disabled:bg-gray-400">
-                            Toplu Veri Çek
+                        <p class="text-sm text-gray-600">Tek tıkla listedeki <strong>tüm varlıkların</strong> bugünden geriye dönük <strong>son 365 günlük</strong> verisini CoinGecko API'sinden çekip veritabanını güncelleyin.</p>
+                        <button id="sync-all-btn" disabled class="w-full bg-teal-600 text-white font-bold py-3 rounded-lg transition hover:bg-teal-700 disabled:bg-gray-400 flex items-center justify-center">
+                            <span id="sync-btn-text">Tümünü Senkronize Et (Son 1 Yıl)</span>
+                            <div id="sync-loader" class="loader ml-2 hidden"></div>
                         </button>
+                        <div id="sync-status" class="text-center p-2 rounded-lg text-sm"></div>
                     </div>
                 </div>
 
@@ -87,32 +87,6 @@
             </div>
         </main>
     </div>
-    
-    <!-- Toplu Veri Çekme Modalı -->
-    <div id="bulk-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50 opacity-0">
-        <div class="modal-content bg-white rounded-lg shadow-xl p-6 max-w-md w-full transform -translate-y-10">
-            <h3 class="text-lg font-bold text-gray-800 mb-4">Toplu Veri Çekme: <span id="modal-asset-name" class="text-indigo-600"></span></h3>
-            <div class="space-y-4">
-                <div>
-                    <label for="start-date" class="block text-sm font-medium text-gray-700">Başlangıç Tarihi</label>
-                    <input type="date" id="start-date" class="mt-1 w-full p-2 border border-gray-300 rounded-lg">
-                </div>
-                <div>
-                    <label for="end-date" class="block text-sm font-medium text-gray-700">Bitiş Tarihi</label>
-                    <input type="date" id="end-date" class="mt-1 w-full p-2 border border-gray-300 rounded-lg">
-                </div>
-                <div id="bulk-status" class="text-center p-2 rounded-lg hidden"></div>
-            </div>
-            <div class="flex justify-end space-x-3 mt-6">
-                <button id="close-modal-btn" class="bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg hover:bg-gray-300">Kapat</button>
-                <button id="fetch-and-save-btn" class="bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 flex items-center">
-                    <span id="fetch-btn-text">Verileri Çek ve Kaydet</span>
-                    <div id="fetch-loader" class="loader ml-2 hidden"></div>
-                </button>
-            </div>
-        </div>
-    </div>
-
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -138,18 +112,12 @@
     const statusMessage = document.getElementById('status-message');
     const authStatus = document.getElementById('auth-status');
     const saveBtn = document.getElementById('save-btn');
-    const bulkFetchBtn = document.getElementById('bulk-fetch-btn');
-
-    // Modal elements
-    const bulkModal = document.getElementById('bulk-modal');
-    const modalAssetName = document.getElementById('modal-asset-name');
-    const closeModalBtn = document.getElementById('close-modal-btn');
-    const fetchAndSaveBtn = document.getElementById('fetch-and-save-btn');
-    const startDateInput = document.getElementById('start-date');
-    const endDateInput = document.getElementById('end-date');
-    const bulkStatus = document.getElementById('bulk-status');
-    const fetchBtnText = document.getElementById('fetch-btn-text');
-    const fetchLoader = document.getElementById('fetch-loader');
+    
+    // Yeni senkronizasyon elementleri
+    const syncAllBtn = document.getElementById('sync-all-btn');
+    const syncBtnText = document.getElementById('sync-btn-text');
+    const syncLoader = document.getElementById('sync-loader');
+    const syncStatus = document.getElementById('sync-status');
 
 
     let db;
@@ -159,7 +127,6 @@
     async function setupFirebase() {
         try {
             // GITHUB'DA ÇALIŞMASI İÇİN GEREKLİ OLAN FIREBASE YAPILANDIRMASI
-            // Bu bilgiler sizin tarafınızdan sağlandı ve kodun içine doğrudan eklendi.
             const firebaseConfig = {
                 apiKey: "AIzaSyCTYoVO0ItXIqeR16oDNgDVkbw-nbVLePE",
                 authDomain: "yatirim-hesaplayici.firebaseapp.com",
@@ -176,14 +143,14 @@
             authStatus.classList.replace('bg-blue-100', 'bg-green-100');
             authStatus.classList.replace('text-blue-800', 'text-green-800');
             saveBtn.disabled = false;
-            bulkFetchBtn.disabled = false;
+            syncAllBtn.disabled = false;
         } catch (error) {
             console.error("Firebase initialization failed:", error);
             authStatus.textContent = `Veritabanı hatası: ${error.message}`;
             authStatus.classList.replace('bg-blue-100', 'bg-red-100');
             authStatus.classList.replace('text-blue-800', 'text-red-800');
             saveBtn.disabled = true;
-            bulkFetchBtn.disabled = true;
+            syncAllBtn.disabled = true;
         }
     }
 
@@ -270,115 +237,87 @@
         }
     }
 
-    // Toplu veri çekme ve kaydetme
-    async function fetchAndSaveHistoricalData() {
-        const cryptoId = cryptoSelect.value;
-        const startDate = startDateInput.value;
-        const endDate = endDateInput.value;
-
-        if (!startDate || !endDate) {
-            showStatus(bulkStatus, "Lütfen başlangıç ve bitiş tarihlerini seçin.", true);
-            return;
-        }
-
-        const startTimestamp = new Date(startDate).getTime() / 1000;
-        const endTimestamp = new Date(endDate).getTime() / 1000 + 86400; // Bitiş gününü dahil etmek için 1 gün ekle
-
-        if (startTimestamp >= endTimestamp) {
-            showStatus(bulkStatus, "Başlangıç tarihi bitiş tarihinden sonra olamaz.", true);
-            return;
-        }
-
-        setFetchLoading(true);
-        showStatus(bulkStatus, `${Math.round((new Date(endDate) - new Date(startDate)) / 86400000)} günlük veri çekiliyor...`, false);
+    // YENİ: Tüm varlıkların son 1 yıllık verisini çek ve kaydet
+    async function syncAllAssets() {
+        setSyncLoading(true);
+        const assetIds = Object.keys(CRYPTO_INFO);
+        const endDate = new Date();
+        const startDate = new Date();
+        startDate.setDate(endDate.getDate() - 365);
         
-        try {
-            const url = `${COINGECKO_API_URL}/coins/${cryptoId}/market_chart/range?vs_currency=try&from=${startTimestamp}&to=${endTimestamp}`;
-            const response = await fetch(url);
-            if (!response.ok) {
-                throw new Error(`API Hatası: ${response.statusText}`);
-            }
-            const data = await response.json();
+        const startTimestamp = Math.floor(startDate.getTime() / 1000);
+        const endTimestamp = Math.floor(endDate.getTime() / 1000);
 
-            if (!data.prices || data.prices.length === 0) {
-                 showStatus(bulkStatus, "Belirtilen aralıkta veri bulunamadı.", true);
-                 setFetchLoading(false);
-                 return;
-            }
+        for (const cryptoId of assetIds) {
+            try {
+                showStatus(syncStatus, `${CRYPTO_INFO[cryptoId].name} verileri çekiliyor...`, false, false);
+                
+                const url = `${COINGECKO_API_URL}/coins/${cryptoId}/market_chart/range?vs_currency=try&from=${startTimestamp}&to=${endTimestamp}`;
+                const response = await fetch(url);
 
-            const pricesToSave = {};
-            data.prices.forEach(pricePoint => {
-                const date = new Date(pricePoint[0]);
-                const formattedDate = date.toISOString().split('T')[0];
-                pricesToSave[formattedDate] = pricePoint[1];
-            });
+                if (!response.ok) {
+                    throw new Error(`API Hatası (${response.status})`);
+                }
+                const data = await response.json();
 
-            const docRef = doc(db, `crypto_historical_prices/${cryptoId}`);
-            await setDoc(docRef, { prices: pricesToSave }, { merge: true });
+                if (!data.prices || data.prices.length === 0) {
+                    console.warn(`${cryptoId} için veri bulunamadı.`);
+                    continue; 
+                }
+
+                const pricesToSave = {};
+                data.prices.forEach(pricePoint => {
+                    const date = new Date(pricePoint[0]);
+                    const formattedDate = date.toISOString().split('T')[0];
+                    pricesToSave[formattedDate] = pricePoint[1];
+                });
+
+                const docRef = doc(db, `crypto_historical_prices/${cryptoId}`);
+                // Eski veriyi silip yenisini eklemek için merge:true olmadan direkt dökümanı set ediyoruz.
+                await setDoc(docRef, { prices: pricesToSave });
+                
+                showStatus(syncStatus, `${CRYPTO_INFO[cryptoId].name} başarıyla güncellendi!`, false, false);
+                
+                // API rate limit'e takılmamak için 1.5 saniye bekle
+                await new Promise(resolve => setTimeout(resolve, 1500)); 
             
-            showStatus(bulkStatus, `${Object.keys(pricesToSave).length} günlük veri başarıyla kaydedildi!`, false);
-            setTimeout(() => toggleModal(false), 2000);
-
-        } catch (error) {
-            console.error("Toplu veri çekme hatası:", error);
-            showStatus(bulkStatus, `Hata: ${error.message}`, true);
-        } finally {
-            setFetchLoading(false);
+            } catch (error) {
+                console.error(`${cryptoId} için senkronizasyon hatası:`, error);
+                showStatus(syncStatus, `${CRYPTO_INFO[cryptoId].name} güncellenemedi. Hata: ${error.message}`, true, false);
+                await new Promise(resolve => setTimeout(resolve, 1500));
+            }
         }
+        
+        showStatus(syncStatus, "Tüm varlıkların senkronizasyonu tamamlandı!", false, true);
+        setSyncLoading(false);
     }
     
     // Durum mesajını göster
-    function showStatus(element, message, isError) {
+    function showStatus(element, message, isError, shouldClear) {
         element.textContent = message;
-        element.className = `text-center p-2 rounded-lg ${isError ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`;
-        element.classList.remove('hidden');
-        if (element === statusMessage) {
+        element.className = `text-center p-2 rounded-lg text-sm ${isError ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`;
+        
+        if (shouldClear) {
             setTimeout(() => {
                 element.textContent = '';
-                element.className = 'text-center p-2 rounded-lg';
-            }, 3000);
-        }
-    }
-
-    function toggleModal(show) {
-        if (show) {
-            const selectedCryptoId = cryptoSelect.value;
-            modalAssetName.textContent = CRYPTO_INFO[selectedCryptoId].name;
-            const today = new Date();
-            const yesterday = new Date(today);
-            yesterday.setDate(today.getDate() - 1);
-            const ninetyDaysAgo = new Date(today);
-            ninetyDaysAgo.setDate(today.getDate() - 90);
-            
-            endDateInput.value = yesterday.toISOString().split('T')[0];
-            startDateInput.value = ninetyDaysAgo.toISOString().split('T')[0];
-            
-            bulkStatus.classList.add('hidden');
-
-            bulkModal.classList.remove('hidden');
-            setTimeout(() => {
-                bulkModal.classList.remove('opacity-0');
-                bulkModal.querySelector('.modal-content').classList.remove('-translate-y-10');
-            }, 10);
-        } else {
-            bulkModal.classList.add('opacity-0');
-            bulkModal.querySelector('.modal-content').classList.add('-translate-y-10');
-            setTimeout(() => bulkModal.classList.add('hidden'), 250);
+                element.className = 'text-center p-2 rounded-lg text-sm';
+            }, 5000);
         }
     }
     
-    function setFetchLoading(isLoading) {
-        fetchLoader.classList.toggle('hidden', !isLoading);
-        fetchBtnText.classList.toggle('hidden', isLoading);
-        fetchAndSaveBtn.disabled = isLoading;
+    // YENİ: Senkronizasyon butonu yüklenme durumu
+    function setSyncLoading(isLoading) {
+        syncLoader.classList.toggle('hidden', !isLoading);
+        syncBtnText.classList.toggle('hidden', isLoading);
+        syncAllBtn.disabled = isLoading;
+        saveBtn.disabled = isLoading;
+        cryptoSelect.disabled = isLoading;
     }
 
     // --- Event Listeners ---
     cryptoSelect.addEventListener('change', (e) => listenToHistory(e.target.value));
     addDataForm.addEventListener('submit', handleFormSubmit);
-    bulkFetchBtn.addEventListener('click', () => toggleModal(true));
-    closeModalBtn.addEventListener('click', () => toggleModal(false));
-    fetchAndSaveBtn.addEventListener('click', fetchAndSaveHistoricalData);
+    syncAllBtn.addEventListener('click', syncAllAssets);
 
 
     // --- Initial Setup ---
