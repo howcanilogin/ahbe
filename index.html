@@ -396,7 +396,7 @@
         Object.keys(CRYPTO_INFO).forEach(id => {
             const info = CRYPTO_INFO[id];
             const translatedName = getTranslation('asset_' + id, info.name);
-            cryptoList.innerHTML += createAssetCheckboxHTML(id, translatedName, info.logo, 'crypto-logo', ['bitcoin', 'tether-gold'].includes(id));
+            cryptoList.innerHTML += createAssetCheckboxHTML(id, translatedName, info.logo, 'crypto-logo', ['bitcoin', 'tether-gold', 'solana', 'ripple', 'cardano'].includes(id));
         });
     }
 
