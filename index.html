@@ -184,6 +184,7 @@
 <script type="module">
     // Firebase SDK'ları
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
     import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
     const FRANKFURTER_API_URL = 'https://api.frankfurter.app';
@@ -274,7 +275,7 @@
         tableReturn: { tr: 'Getiri (%)', en: 'Return (%)', de: 'Rendite (%)', fr: 'Rendement (%)', zh: '回报率 (%)', ja: 'リターン (%)', ko: '수익률 (%)', ar: 'العائد (٪)' },
         tableProfit: { tr: 'Kar/Zarar (₺)', en: 'Profit/Loss (TRY)', de: 'Gewinn/Verlust (TRY)', fr: 'Profit/Perte (TRY)', zh: '盈/亏 (TRY)', ja: '利益/損失 (TRY)', ko: '손익 (TRY)', ar: 'الربح/الخسارة (ليرة تركية)' },
         tableStartPrice: { tr: 'Başlangıç F. (₺)', en: 'Start Price (TRY)', de: 'Startpreis (TRY)', fr: 'Prix de Départ (TRY)', zh: '起始价格 (TRY)', ja: '開始価格 (TRY)', ko: '시작 가격 (TRY)', ar: 'سعر البداية (ليرة تركية)' },
-        tableEndPrice: { tr: 'Bitiş F. (₺)', en: 'End Price (TRY)', de: 'Endpreis (TRY)', fr: 'Prix Final (TRY)', zh: '结束价格 (TRY)', ja: '終了価格 (TRY)', ko: '종료 가격 (TRY)', ar: ' سعر النهاية (ليرة تركية)' },
+        tableEndPrice: { tr: 'Bitiş F. (₺)', en: 'End Price (TRY)', de: 'Endpreis (TRY)', fr: 'Prix Final (TRY)', zh: '结束价格 (TRY)', ja: '終了価格 (TRY)', ko: '종료 가격 (TRY)', ar: 'سعر النهاية (ليرة تركية)' },
         errorTitle: { tr: 'Hata', en: 'Error', de: 'Fehler', fr: 'Erreur', zh: '错误', ja: 'エラー', ko: '오류', ar: 'خطأ' },
         close: { tr: 'Kapat', en: 'Close', de: 'Schließen', fr: 'Fermer', zh: '关闭', ja: '閉じる', ko: '닫기', ar: 'إغلاق' },
         loading: { tr: 'Yükleniyor...', en: 'Loading...', de: 'Wird geladen...', fr: 'Chargement...', zh: '加载中...', ja: '読み込み中...', ko: '로딩 중...', ar: 'جار التحميل...' },
@@ -327,23 +328,19 @@
     // --- BAŞLANGIÇ FONKSİYONLARI ---
     async function setupFirebase() {
         try {
-            // SAĞLADIĞINIZ BİLGİLERLE GÜNCELLENDİ
-            const firebaseConfig = {
-                apiKey: "AIzaSyCTYoVO0ItXIqeR16oDNgDVkbw-nbVLePE",
-                authDomain: "yatirim-hesaplayici.firebaseapp.com",
-                projectId: "yatirim-hesaplayici",
-                storageBucket: "yatirim-hesaplayici.appspot.com",
-                messagingSenderId: "859286610441",
-                appId: "1:859286610441:web:1b09fc6b0ce1665fd9ced8"
-            };
-
+            const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
             const app = initializeApp(firebaseConfig);
             db = getFirestore(app);
-            
-            console.log("Firebase initialized.");
+            const auth = getAuth(app);
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                await signInWithCustomToken(auth, __initial_auth_token);
+            } else {
+                await signInAnonymously(auth);
+            }
+            console.log("Firebase initialized and authenticated.");
         } catch (error) {
             console.error("Firebase initialization failed:", error);
-            showError(`Veritabanı bağlantısı kurulamadı. Detay: ${error.message}`);
+            showError("Veritabanı bağlantısı kurulamadı. Lütfen sayfayı yenileyin.");
         }
     }
 
@@ -549,9 +546,10 @@
             if (!db) {
                 throw new Error("Veritabanı bağlantısı henüz hazır değil.");
             }
-            
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
             for (const id of cryptoIds) {
-                const docRef = doc(db, `crypto_historical_prices/${id}`);
+                const docRef = doc(db, `/artifacts/${appId}/public/data/crypto_historical_prices/${id}`);
                 const docSnap = await getDoc(docRef);
 
                 if (docSnap.exists() && docSnap.data().prices) {
