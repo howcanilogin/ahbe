@@ -152,7 +152,17 @@
     import { getFirestore, doc, onSnapshot, setDoc, updateDoc, deleteField } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
     const COINGECKO_API_URL = 'https://api.coingecko.com/api/v3';
-    const MAIN_ASSETS = ['bitcoin', 'ethereum', 'tether-gold']; // Silinemeyen ana varlıklar
+    
+    // Silinemeyen ve otomatik eklenen ana varlıklar
+    const MAIN_ASSETS = ['bitcoin', 'ethereum', 'tether-gold', 'solana', 'ripple', 'cardano']; 
+    const MAIN_ASSETS_DETAILS = {
+        'bitcoin': { name: 'Bitcoin', symbol: 'BTC' },
+        'ethereum': { name: 'Ethereum', symbol: 'ETH' },
+        'tether-gold': { name: 'Tether Gold', symbol: 'XAUT' },
+        'solana': { name: 'Solana', symbol: 'SOL' },
+        'ripple': { name: 'XRP', symbol: 'XRP' },
+        'cardano': { name: 'Cardano', symbol: 'ADA' },
+    };
     
     // DOM Elements
     const cryptoSelect = document.getElementById('crypto-select');
@@ -226,20 +236,41 @@
         }
     }
 
-    // Firestore'dan varlık listesini dinle
+    // Firestore'dan varlık listesini dinle ve eksik ana varlıkları ekle
     function listenToCryptoConfig() {
-        onSnapshot(configDocRef, (doc) => {
-            if (doc.exists() && Object.keys(doc.data()).length > 0) {
-                CRYPTO_INFO = doc.data();
-            } else {
-                // Döküman yoksa veya boşsa, varsayılanlarla oluştur
-                createDefaultConfig();
-                return;
+        onSnapshot(configDocRef, async (docSnap) => {
+            let currentConfig = {};
+            let needsUpdate = false;
+
+            if (docSnap.exists() && Object.keys(docSnap.data()).length > 0) {
+                currentConfig = docSnap.data();
             }
-            // Arayüzü güncelle
+
+            // Ana varlıkların listede olup olmadığını kontrol et
+            for (const assetId of MAIN_ASSETS) {
+                if (!currentConfig[assetId]) {
+                    console.log(`Ana varlık eksik: ${assetId}. Ekleniyor...`);
+                    currentConfig[assetId] = MAIN_ASSETS_DETAILS[assetId];
+                    needsUpdate = true;
+                }
+            }
+
+            // Döküman yoksa veya güncellenmesi gerekiyorsa, Firestore'a yaz
+            if (needsUpdate || !docSnap.exists()) {
+                try {
+                    // merge: true, kullanıcı tarafından eklenen diğer varlıkları korur
+                    await setDoc(configDocRef, currentConfig, { merge: true }); 
+                } catch (error) {
+                    console.error("Ana varlıkları yapılandırmaya eklerken hata:", error);
+                }
+            }
+            
+            CRYPTO_INFO = currentConfig;
+
+            // Arayüzü en güncel veriyle yeniden oluştur
             populateCryptoSelect();
             renderManagedAssets();
-            // Eğer bir varlık seçiliyse, geçmişini yeniden yükle
+            
             if (cryptoSelect.value) {
                 listenToHistory(cryptoSelect.value);
             }
@@ -247,21 +278,6 @@
             console.error("Config listener error:", error);
             showStatus(addCryptoStatus, "Varlık listesi yüklenemedi!", true, false);
         });
-    }
-
-    async function createDefaultConfig() {
-        console.log("Config doc not found or empty, creating with defaults.");
-        const defaultCryptos = {
-            'bitcoin': { name: 'Bitcoin', symbol: 'BTC' },
-            'ethereum': { name: 'Ethereum', symbol: 'ETH' },
-            'tether-gold': { name: 'Tether Gold', symbol: 'XAUT' },
-        };
-        try {
-            await setDoc(configDocRef, defaultCryptos);
-            CRYPTO_INFO = defaultCryptos;
-        } catch (error) {
-            console.error("Failed to create default config:", error);
-        }
     }
 
     function populateCryptoSelect() {
