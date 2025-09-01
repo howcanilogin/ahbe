@@ -110,7 +110,9 @@
                 <h3 class="font-semibold text-gray-800" data-translate-key="crypto">Kripto Para & Altın</h3>
                 <label class="flex items-center text-sm"><input type="checkbox" class="select-all-tab mr-1 custom-checkbox appearance-none border-2 border-gray-300 rounded"><span data-translate-key="selectAll">Tümünü Seç</span></label>
             </div>
-            <div id="crypto-list" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3"></div>
+            <div id="crypto-list" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                 <div class="text-center animate-pulse col-span-full">Kripto varlık listesi yükleniyor...</div>
+            </div>
         </div>
       </div>
 
@@ -184,22 +186,14 @@
 <script type="module">
     // Firebase SDK'ları
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
     import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
     const FRANKFURTER_API_URL = 'https://api.frankfurter.app';
     const COINGECKO_API_URL = 'https://api.coingecko.com/api/v3';
 
     // --- VERİ KAYNAKLARI ---
-    const CRYPTO_INFO = {
-        'bitcoin': { name: 'Bitcoin', symbol: 'BTC', logo: 'https://assets.coingecko.com/coins/images/1/large/bitcoin.png' },
-        'ethereum': { name: 'Ethereum', symbol: 'ETH', logo: 'https://assets.coingecko.com/coins/images/279/large/ethereum.png' },
-        'tether-gold': { name: 'Tether Gold', symbol: 'XAUT', logo: 'https://assets.coingecko.com/coins/images/10481/large/tether-gold.png' },
-        'solana': { name: 'Solana', symbol: 'SOL', logo: 'https://assets.coingecko.com/coins/images/4128/large/solana.png' },
-        'ripple': { name: 'XRP', symbol: 'XRP', logo: 'https://static.crypto.com/token/icons/xrp/color_icon.png' },
-        'cardano': { name: 'Cardano', symbol: 'ADA', logo: 'https://assets.coingecko.com/coins/images/975/large/cardano.png' },
-        'dogecoin': { name: 'Dogecoin', symbol: 'DOGE', logo: 'https://assets.coingecko.com/coins/images/5/large/dogecoin.png' }
-    };
+    let DYNAMIC_CRYPTO_INFO = {}; // Veritabanından dinamik olarak doldurulacak
     const CURRENCY_TRANSLATIONS = {
         "Australian Dollar": "Avustralya Doları", "Bulgarian Lev": "Bulgar Levası", "Brazilian Real": "Brezilya Reali",
         "Canadian Dollar": "Kanada Doları", "Swiss Franc": "İsviçre Frangı", "Chinese Yuan Renminbi": "Çin Yuanı",
@@ -294,12 +288,18 @@
     };
 
     function getTranslation(key, fallback = '') {
-        if (key.startsWith('currency_')) {
-            const code = key.replace('currency_', '');
+        const lowerKey = key.toLowerCase();
+        if (lowerKey.startsWith('currency_')) {
+            const code = lowerKey.replace('currency_', '');
             const englishName = CURRENCY_INFO[code]?.name || fallback;
-            return CURRENCY_TRANSLATIONS[englishName]?.[currentLang] || englishName;
+            return CURRENCY_TRANSLATIONS[englishName] || englishName;
         }
-        return translations[key]?.[currentLang] || fallback;
+        if (translations[lowerKey]) return translations[lowerKey][currentLang] || fallback;
+
+        const assetKey = 'asset_' + lowerKey;
+        if(translations[assetKey]) return translations[assetKey][currentLang] || fallback;
+        
+        return fallback;
     }
 
     function changeLanguage(lang) {
@@ -309,12 +309,24 @@
 
         document.querySelectorAll('[data-translate-key]').forEach(el => {
             const key = el.dataset.translateKey;
-            const fallback = el.tagName === 'INPUT' ? el.placeholder : el.innerHTML;
+            let fallback;
+            if (el.tagName === 'INPUT') {
+                fallback = el.placeholder;
+            } else {
+                 fallback = el.innerHTML;
+            }
             const translation = getTranslation(key, fallback);
+
             if (el.tagName === 'INPUT') {
                 el.placeholder = translation;
             } else {
-                el.innerHTML = translation;
+                // To prevent breaking elements with children (like the trophy icon)
+                const firstChild = el.firstChild;
+                if (firstChild && firstChild.nodeType === Node.TEXT_NODE) {
+                    firstChild.nodeValue = translation;
+                } else {
+                    el.innerHTML = translation;
+                }
             }
         });
         
@@ -328,24 +340,61 @@
     // --- BAŞLANGIÇ FONKSİYONLARI ---
     async function setupFirebase() {
         try {
-            const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+            const firebaseConfig = {
+                apiKey: "AIzaSyCTYoVO0ItXIqeR16oDNgDVkbw-nbVLePE",
+                authDomain: "yatirim-hesaplayici.firebaseapp.com",
+                projectId: "yatirim-hesaplayici",
+                storageBucket: "yatirim-hesaplayici.appspot.com",
+                messagingSenderId: "859286610441",
+                appId: "1:859286610441:web:1b09fc6b0ce1665fd9ced8"
+            };
             const app = initializeApp(firebaseConfig);
             db = getFirestore(app);
             const auth = getAuth(app);
-            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                await signInWithCustomToken(auth, __initial_auth_token);
-            } else {
-                await signInAnonymously(auth);
-            }
-            console.log("Firebase initialized and authenticated.");
+            await signInAnonymously(auth);
+            console.log("Firebase initialized and authenticated anonymously.");
         } catch (error) {
             console.error("Firebase initialization failed:", error);
             showError("Veritabanı bağlantısı kurulamadı. Lütfen sayfayı yenileyin.");
         }
     }
+    
+    async function fetchCryptoConfig() {
+        if (!db) return {};
+        try {
+            const configDocRef = doc(db, "config", "supported_cryptos");
+            const docSnap = await getDoc(configDocRef);
+            if (docSnap.exists()) {
+                 const config = docSnap.data();
+                 const ids = Object.keys(config).join(',');
+                 if (!ids) return {};
+                 const markets = await fetch(`${COINGECKO_API_URL}/coins/markets?vs_currency=try&ids=${ids}&order=market_cap_desc&per_page=100&page=1&sparkline=false`);
+                 const marketsData = await markets.json();
+                 
+                 marketsData.forEach(market => {
+                     if(config[market.id]) {
+                         config[market.id].logo = market.image;
+                     }
+                 });
+                 return config;
+            } else {
+                console.error("Crypto config document does not exist in Firestore!");
+                return {};
+            }
+        } catch (error) {
+            console.error("Error fetching crypto config:", error);
+            return {};
+        }
+    }
 
     document.addEventListener('DOMContentLoaded', async () => {
       await setupFirebase();
+      DYNAMIC_CRYPTO_INFO = await fetchCryptoConfig();
+      if(Object.keys(DYNAMIC_CRYPTO_INFO).length === 0) {
+          showError("Kripto varlık listesi veritabanından alınamadı.");
+          document.getElementById('crypto-list').innerHTML = `<div class="col-span-full text-center text-red-500">Kripto varlık listesi yüklenemedi.</div>`;
+          return;
+      }
       await initializeAssetSelectors();
       await updateMarketWidget();
       baseDateInput.value = new Date().toISOString().split('T')[0];
@@ -368,7 +417,7 @@
             
             ALL_ASSETS_INFO = {
                 ...CURRENCY_INFO,
-                ...CRYPTO_INFO
+                ...DYNAMIC_CRYPTO_INFO
             };
             
             rebuildAssetLists();
@@ -393,20 +442,23 @@
             currencyList.innerHTML += createAssetCheckboxHTML(code, translatedName, info.logo, 'asset-logo', ['USD', 'EUR'].includes(code), isHidden);
         });
 
-        Object.keys(CRYPTO_INFO).forEach(id => {
-            const info = CRYPTO_INFO[id];
-            const translatedName = getTranslation('asset_' + id, info.name);
+        const sortedCryptoIds = Object.keys(DYNAMIC_CRYPTO_INFO).sort((a,b) => DYNAMIC_CRYPTO_INFO[a].name.localeCompare(DYNAMIC_CRYPTO_INFO[b].name));
+        sortedCryptoIds.forEach(id => {
+            const info = DYNAMIC_CRYPTO_INFO[id];
+            const translatedName = getTranslation(info.name, info.name);
             cryptoList.innerHTML += createAssetCheckboxHTML(id, translatedName, info.logo, 'crypto-logo', ['bitcoin', 'tether-gold', 'solana', 'ripple', 'cardano'].includes(id));
         });
     }
 
     function createAssetCheckboxHTML(id, name, logo, logoClass, isChecked = false, isHidden = '') {
+        const assetInfo = ALL_ASSETS_INFO[id];
+        if (!assetInfo) return ''; // Varlık bilgisi bulunamazsa boş döndür
         return `
             <div class="flex items-center asset-item ${isHidden}" data-name="${name.toLowerCase()} ${id.toLowerCase()}">
                 <input id="asset-${id}" type="checkbox" value="${id}" ${isChecked ? 'checked' : ''} class="custom-checkbox appearance-none h-5 w-5 border-2 border-gray-300 rounded cursor-pointer">
                 <label for="asset-${id}" class="ml-2 text-sm font-medium text-gray-700 cursor-pointer flex items-center" title="${id.toUpperCase()}">
-                    <img src="${logo}" alt="${name}" class="${logoClass} mr-2" onerror="this.style.display='none'">
-                    <span>${ALL_ASSETS_INFO[id]?.symbol || id}</span>
+                    <img src="${logo || 'https://placehold.co/24x24/e0e0e0/e0e0e0'}" alt="${name}" class="${logoClass} mr-2" onerror="this.onerror=null;this.src='https://placehold.co/24x24/e0e0e0/000000?text=?';">
+                    <span>${assetInfo.symbol || id.toUpperCase()}</span>
                 </label>
             </div>
         `;
@@ -414,7 +466,7 @@
 
     async function updateMarketWidget() {
         try {
-            const cryptoIds = 'bitcoin,ethereum,tether-gold'; 
+            const cryptoIds = 'bitcoin,ethereum,tether-gold,solana,ripple,cardano'; 
 
             const [todayFX, cryptoData] = await Promise.all([
                 fetch(`${FRANKFURTER_API_URL}/latest?from=USD&to=TRY,EUR`).then(res => res.json()),
@@ -422,23 +474,24 @@
             ]);
 
             const todayUSDtoTRY = todayFX.rates.TRY;
-            const todayEURtoTRY = todayFX.rates.EUR * todayUSDtoTRY;
+            const todayEURtoTRY = (1 / todayFX.rates.EUR) * todayUSDtoTRY;
             
             const yesterday = new Date();
             yesterday.setDate(yesterday.getDate() - 1);
             const yesterdayStr = yesterday.toISOString().split('T')[0];
             const yesterdayFX = await fetch(`${FRANKFURTER_API_URL}/${yesterdayStr}?from=USD&to=TRY,EUR`).then(res => res.json());
             const yesterdayUSDtoTRY = yesterdayFX.rates.TRY;
-            const yesterdayEURtoTRY = yesterdayFX.rates.EUR * yesterdayUSDtoTRY;
+            const yesterdayEURtoTRY = (1 / yesterdayFX.rates.EUR) * yesterdayUSDtoTRY;
 
 
             const widgetData = [
-                { name: 'Dolar (Anlık)', logo: CURRENCY_INFO.USD.logo, today: todayUSDtoTRY, changePercent: ((todayUSDtoTRY - yesterdayUSDtoTRY) / yesterdayUSDtoTRY) * 100 },
-                { name: 'Euro (Anlık)', logo: CURRENCY_INFO.EUR.logo, today: todayEURtoTRY, changePercent: ((todayEURtoTRY - yesterdayEURtoTRY) / yesterdayEURtoTRY) * 100 },
-                { name: 'Tether Gold (Anlık)', logo: CRYPTO_INFO['tether-gold'].logo, today: cryptoData['tether-gold'].try, changePercent: cryptoData['tether-gold'].try_24h_change },
-                { name: 'Bitcoin', logo: CRYPTO_INFO.bitcoin.logo, today: cryptoData.bitcoin.try, changePercent: cryptoData.bitcoin.try_24h_change },
-                { name: 'Ethereum', logo: CRYPTO_INFO.ethereum.logo, today: cryptoData.ethereum.try, changePercent: cryptoData.ethereum.try_24h_change },
-            ];
+                { id: 'USD', name: 'Dolar', logo: CURRENCY_INFO.USD.logo, today: todayUSDtoTRY, changePercent: ((todayUSDtoTRY - yesterdayUSDtoTRY) / yesterdayUSDtoTRY) * 100 },
+                { id: 'EUR', name: 'Euro', logo: CURRENCY_INFO.EUR.logo, today: todayEURtoTRY, changePercent: ((todayEURtoTRY - yesterdayEURtoTRY) / yesterdayEURtoTRY) * 100 },
+                { id: 'tether-gold', name: 'Tether Gold', logo: DYNAMIC_CRYPTO_INFO['tether-gold']?.logo, today: cryptoData['tether-gold']?.try, changePercent: cryptoData['tether-gold']?.try_24h_change },
+                { id: 'bitcoin', name: 'Bitcoin', logo: DYNAMIC_CRYPTO_INFO.bitcoin?.logo, today: cryptoData.bitcoin?.try, changePercent: cryptoData.bitcoin?.try_24h_change },
+                { id: 'ethereum', name: 'Ethereum', logo: DYNAMIC_CRYPTO_INFO.ethereum?.logo, today: cryptoData.ethereum?.try, changePercent: cryptoData.ethereum?.try_24h_change },
+                { id: 'solana', name: 'Solana', logo: DYNAMIC_CRYPTO_INFO.solana?.logo, today: cryptoData.solana?.try, changePercent: cryptoData.solana?.try_24h_change },
+            ].filter(item => item.today !== undefined); // Verisi gelmeyenleri filtrele
 
             marketWidgetContainer.innerHTML = '';
             widgetData.forEach(item => {
@@ -449,13 +502,13 @@
 
                 marketWidgetContainer.innerHTML += `
                     <div class="flex flex-col items-center p-3 bg-white rounded-lg shadow-sm border">
-                        <div class="flex items-center font-bold text-gray-800 text-center text-sm">
-                           <img src="${item.logo}" alt="${item.name}" class="crypto-logo mr-2" onerror="this.style.display='none'">
+                        <div class="flex items-center font-bold text-gray-800 text-center text-sm h-10">
+                           <img src="${item.logo || 'https://placehold.co/24x24/e0e0e0/e0e0e0'}" alt="${item.name}" class="crypto-logo mr-2" onerror="this.style.display='none'">
                            <span>${item.name}</span>
                         </div>
                         <p class="text-lg font-semibold text-gray-900 my-1">${item.today.toLocaleString('tr-TR', {style:'currency', currency:'TRY', maximumFractionDigits: 2})}</p>
                         <div class="flex items-center text-xs font-medium ${changeClass}">
-                           <span>${sign}${change.toFixed(2)} ₺</span>
+                           <span>${sign}${change.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺</span>
                            <span class="mx-1">|</span>
                            <span>${sign}${changePercent.toFixed(2)}%</span>
                         </div>
@@ -479,7 +532,7 @@
             const startDate = computeStartDate(endDate, months);
             
             const selectedCurrencies = selectedAssets.filter(a => CURRENCY_INFO[a]);
-            const selectedCryptos = selectedAssets.filter(a => CRYPTO_INFO[a]);
+            const selectedCryptos = selectedAssets.filter(a => DYNAMIC_CRYPTO_INFO[a]);
 
             const [endCurrencyRates, startCurrencyRates, endCryptoRates, startCryptoRates] = await Promise.all([
                 fetchCurrencyRates(formatDateForAPI(endDate), selectedCurrencies),
@@ -546,10 +599,9 @@
             if (!db) {
                 throw new Error("Veritabanı bağlantısı henüz hazır değil.");
             }
-            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
             for (const id of cryptoIds) {
-                const docRef = doc(db, `/artifacts/${appId}/public/data/crypto_historical_prices/${id}`);
+                const docRef = doc(db, `crypto_historical_prices/${id}`);
                 const docSnap = await getDoc(docRef);
 
                 if (docSnap.exists() && docSnap.data().prices) {
@@ -572,7 +624,7 @@
 
         const missingCryptos = cryptoIds.filter(id => !rates[id]);
         if (missingCryptos.length > 0) {
-            const missingNames = missingCryptos.map(id => CRYPTO_INFO[id].name).join(', ');
+            const missingNames = missingCryptos.map(id => DYNAMIC_CRYPTO_INFO[id]?.name || id).join(', ');
             showError(`${missingNames} için seçilen tarihlerde veri bulunamadı. Lütfen yönetim panelinden veri ekleyin veya farklı bir tarih aralığı deneyin.`);
         }
         
@@ -615,7 +667,7 @@
             const isProfit = item.profitLossTL >= 0;
             const info = ALL_ASSETS_INFO[item.name] || { name: item.name };
             const isInterest = item.name.startsWith('Faiz');
-            const logoHtml = info.logo ? `<img src="${info.logo}" alt="${info.name}" class="${CRYPTO_INFO[item.name] ? 'crypto-logo' : 'asset-logo'} mr-2" onerror="this.style.display='none'">` : '';
+            const logoHtml = info.logo ? `<img src="${info.logo}" alt="${info.name}" class="${DYNAMIC_CRYPTO_INFO[item.name] ? 'crypto-logo' : 'asset-logo'} mr-2" onerror="this.onerror=null;this.src='https://placehold.co/24x24/e0e0e0/000000?text=?';">` : '';
             
             const startPriceDisplay = isInterest || !item.startPrice ? '-' : item.startPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) + '₺';
             const endPriceDisplay = isInterest || !item.endPrice ? '-' : item.endPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) + '₺';
@@ -625,7 +677,7 @@
                 <td class="py-3 px-4 font-semibold text-gray-800">
                   <div class="flex items-center">
                     ${logoHtml}
-                    <span>${getTranslation('asset_' + item.name.toLowerCase(), info.name)}</span>
+                    <span>${getTranslation(info.name, info.name)}</span>
                     ${index === 0 && isProfit ? '<span class="ml-auto text-xs bg-green-200 text-green-800 font-bold px-2 py-1 rounded-full">🏆 En İyi</span>' : ''}
                   </div>
                 </td>
@@ -640,7 +692,7 @@
 
     function displayChart(data){
       if (myChart) myChart.destroy();
-      const labels = data.map(d => getTranslation('asset_' + d.name.toLowerCase(), ALL_ASSETS_INFO[d.name]?.name || d.name));
+      const labels = data.map(d => getTranslation(ALL_ASSETS_INFO[d.name]?.name || d.name, ALL_ASSETS_INFO[d.name]?.name || d.name));
       const profitLossData = data.map(d => Number(d.profitLossTL.toFixed(2)));
       const ctx = chartCanvas.getContext('2d');
       myChart = new Chart(ctx, {
@@ -668,7 +720,7 @@
 
     function displayPieChart(data) {
         if (myPieChart) myPieChart.destroy();
-        const labels = data.map(d => getTranslation('asset_' + d.name.toLowerCase(), ALL_ASSETS_INFO[d.name]?.name || d.name));
+        const labels = data.map(d => getTranslation(ALL_ASSETS_INFO[d.name]?.name || d.name, ALL_ASSETS_INFO[d.name]?.name || d.name));
         const finalValues = data.map(d => Number((amountInput.valueAsNumber + d.profitLossTL).toFixed(2)));
         const ctx = pieChartCanvas.getContext('2d');
         myPieChart = new Chart(ctx, {
