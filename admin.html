@@ -211,11 +211,11 @@
         const price = parseFloat(priceValueInput.value);
 
         if (!cryptoId || !date || isNaN(price)) {
-            showStatus(statusMessage, "Lütfen tüm alanları doldurun.", true);
+            showStatus(statusMessage, "Lütfen tüm alanları doldurun.", true, true);
             return;
         }
         if (!db) {
-            showStatus(statusMessage, "Veritabanı bağlantısı yok.", true);
+            showStatus(statusMessage, "Veritabanı bağlantısı yok.", true, true);
             return;
         }
         
@@ -226,18 +226,18 @@
 
         try {
             await setDoc(docRef, dataToUpdate, { merge: true });
-            showStatus(statusMessage, "Veri başarıyla kaydedildi!", false);
+            showStatus(statusMessage, "Veri başarıyla kaydedildi!", false, true);
             addDataForm.reset();
         } catch (error) {
             console.error("Veri kaydetme hatası:", error);
-            showStatus(statusMessage, `Hata: ${error.message}`, true);
+            showStatus(statusMessage, `Hata: ${error.message}`, true, true);
         } finally {
              saveBtn.disabled = false;
              saveBtn.textContent = "Ekle / Güncelle";
         }
     }
 
-    // YENİ: Tüm varlıkların son 1 yıllık verisini çek ve kaydet
+    // Tüm varlıkların son 1 yıllık verisini çek ve kaydet
     async function syncAllAssets() {
         setSyncLoading(true);
         const assetIds = Object.keys(CRYPTO_INFO);
@@ -305,7 +305,7 @@
         }
     }
     
-    // YENİ: Senkronizasyon butonu yüklenme durumu
+    // Senkronizasyon butonu yüklenme durumu
     function setSyncLoading(isLoading) {
         syncLoader.classList.toggle('hidden', !isLoading);
         syncBtnText.classList.toggle('hidden', isLoading);
@@ -332,4 +332,3 @@
 </script>
 </body>
 </html>
-
