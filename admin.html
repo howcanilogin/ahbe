@@ -83,7 +83,7 @@
                 </div>
             </div>
              <div class="text-center text-xs text-gray-400">
-                <p>Verileriniz Firestore veritabanında <code class="bg-gray-200 p-1 rounded">/artifacts/{appId}/public/data/crypto_historical_prices/{varlık_adı}</code> yolu altında saklanmaktadır.</p>
+                <p>Verileriniz Firestore veritabanında <code class="bg-gray-200 p-1 rounded">crypto_historical_prices/{varlık_adı}</code> koleksiyonu altında saklanmaktadır.</p>
             </div>
         </main>
     </div>
@@ -116,7 +116,6 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
     import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
     const COINGECKO_API_URL = 'https://api.coingecko.com/api/v3';
@@ -159,15 +158,19 @@
     // Firebase'i başlat
     async function setupFirebase() {
         try {
-            const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+            // SAĞLADIĞINIZ BİLGİLERLE GÜNCELLENDİ
+            const firebaseConfig = {
+                apiKey: "AIzaSyCTYoVO0ItXIqeR16oDNgDVkbw-nbVLePE",
+                authDomain: "yatirim-hesaplayici.firebaseapp.com",
+                projectId: "yatirim-hesaplayici",
+                storageBucket: "yatirim-hesaplayici.appspot.com",
+                messagingSenderId: "859286610441",
+                appId: "1:859286610441:web:1b09fc6b0ce1665fd9ced8"
+            };
+
             const app = initializeApp(firebaseConfig);
             db = getFirestore(app);
-            const auth = getAuth(app);
-            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                await signInWithCustomToken(auth, __initial_auth_token);
-            } else {
-                await signInAnonymously(auth);
-            }
+
             authStatus.textContent = "Veritabanı bağlantısı başarılı!";
             authStatus.classList.replace('bg-blue-100', 'bg-green-100');
             authStatus.classList.replace('text-blue-800', 'text-green-800');
@@ -201,8 +204,7 @@
             return;
         }
         
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const docRef = doc(db, `/artifacts/${appId}/public/data/crypto_historical_prices/${cryptoId}`);
+        const docRef = doc(db, `crypto_historical_prices/${cryptoId}`);
         historyTableBody.innerHTML = `<tr><td colspan="2" class="text-center p-8 text-gray-500">Veriler yükleniyor...</td></tr>`;
 
         currentUnsubscribe = onSnapshot(docRef, (doc) => {
@@ -251,8 +253,7 @@
         
         saveBtn.disabled = true;
         saveBtn.textContent = "Kaydediliyor...";
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const docRef = doc(db, `/artifacts/${appId}/public/data/crypto_historical_prices/${cryptoId}`);
+        const docRef = doc(db, `crypto_historical_prices/${cryptoId}`);
         const dataToUpdate = { [`prices.${date}`]: price };
 
         try {
@@ -311,8 +312,7 @@
                 pricesToSave[formattedDate] = pricePoint[1];
             });
 
-            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-            const docRef = doc(db, `/artifacts/${appId}/public/data/crypto_historical_prices/${cryptoId}`);
+            const docRef = doc(db, `crypto_historical_prices/${cryptoId}`);
             await setDoc(docRef, { prices: pricesToSave }, { merge: true });
             
             showStatus(bulkStatus, `${Object.keys(pricesToSave).length} günlük veri başarıyla kaydedildi!`, false);
