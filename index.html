@@ -186,7 +186,6 @@
 <script type="module">
     // Firebase SDK'ları
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
     import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
     const FRANKFURTER_API_URL = 'https://api.frankfurter.app';
@@ -350,9 +349,8 @@
             };
             const app = initializeApp(firebaseConfig);
             db = getFirestore(app);
-            const auth = getAuth(app);
-            await signInAnonymously(auth);
-            console.log("Firebase initialized and authenticated anonymously.");
+            // Anonim oturum açma kaldırıldı. Güvenlik kuralları public olmalı.
+            console.log("Firebase initialized.");
         } catch (error) {
             console.error("Firebase initialization failed:", error);
             showError("Veritabanı bağlantısı kurulamadı. Lütfen sayfayı yenileyin.");
