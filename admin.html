@@ -495,6 +495,9 @@
             const newAssetData = { name: data.name, symbol: data.symbol.toUpperCase(), isBase: false };
             const configDocRef = doc(db, "config", "supported_cryptos");
             await setDoc(configDocRef, { [assetId]: newAssetData }, { merge: true });
+
+            const pricesDocRef = doc(db, "crypto_historical_prices", assetId);
+            await setDoc(pricesDocRef, { prices: {} }, { merge: true });
             
             showStatus(addAssetStatus, `${data.name} başarıyla eklendi!`, false, true);
             newAssetInput.value = '';
@@ -518,6 +521,10 @@
         const configDocRef = doc(db, "config", "supported_stocks");
         try {
             await setDoc(configDocRef, { [ticker]: newStockData }, { merge: true });
+
+            const pricesDocRef = doc(db, "stock_historical_prices", ticker);
+            await setDoc(pricesDocRef, { prices: {} }, { merge: true });
+
             showStatus(addAssetStatus, `${name} başarıyla eklendi!`, false, true);
             addStockForm.reset();
         } catch(error) {
@@ -656,8 +663,14 @@
             const docRef = doc(db, collectionName, assetId);
             const docSnap = await getDoc(docRef);
 
-            if (!docSnap.exists() || !docSnap.data().prices) {
-                showStatus(importExportStatus, "Dışa aktarılacak veri bulunamadı.", true, true);
+            if (!docSnap.exists() || !docSnap.data().prices || Object.keys(docSnap.data().prices).length === 0) {
+                const dataForExcel = [];
+                const worksheet = XLSX.utils.json_to_sheet(dataForExcel);
+                XLSX.utils.sheet_add_aoa(worksheet, [['Tarih', 'Fiyat']], { origin: 'A1' });
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbook, worksheet, "Geçmiş Fiyatlar");
+                XLSX.writeFile(workbook, `${assetId}_fiyat_şablonu.xlsx`);
+                showStatus(importExportStatus, "Veri bulunamadı, boş şablon dışa aktarıldı!", false, true);
                 return;
             }
 
