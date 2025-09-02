@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Yönetim Paneli - Geçmiş Veri Girişi</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; }
@@ -19,30 +20,32 @@
     <div class="container mx-auto p-4 md:p-8">
         <header class="text-center mb-8">
             <h1 class="text-3xl md:text-4xl font-bold text-gray-800">Geçmiş Veri Yönetim Paneli</h1>
-            <p class="text-gray-500 mt-2">Hesaplayıcıda kullanılacak geçmiş kripto para fiyatlarını ve varlık listesini buradan yönetin.</p>
+            <p class="text-gray-500 mt-2">Hesaplayıcıda kullanılacak geçmiş kripto para fiyatlarını buradan yönetin.</p>
         </header>
 
         <main class="bg-white rounded-2xl shadow-xl p-6 md:p-8 max-w-7xl mx-auto">
             
-            <div id="auth-status" class="mb-6 text-center p-3 rounded-lg bg-blue-100 text-blue-800">
+            <div id="auth-status" class="mb-4 text-center p-3 rounded-lg bg-blue-100 text-blue-800">
                 Veritabanı bağlantısı kuruluyor...
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <!-- Sol Sütun: Veri Girişi ve API İşlemleri -->
+                <!-- Sol Sütun: Veri Giriş ve API -->
                 <div class="md:col-span-1 space-y-6">
-                    <div class="p-4 border rounded-lg bg-gray-50">
-                        <h2 class="text-xl font-semibold text-gray-700 border-b pb-2 mb-4">1. Varlık Seçin</h2>
+                    <!-- 1. Varlık Seçim -->
+                    <div class="space-y-4">
+                        <h2 class="text-xl font-semibold text-gray-700 border-b pb-2">1. Varlık Seçin</h2>
                         <div>
                             <label for="crypto-select" class="block text-sm font-medium text-gray-700 mb-1">Kripto Varlık</label>
                             <select id="crypto-select" class="w-full p-3 border border-gray-300 rounded-lg bg-white">
-                                <option>Varlık listesi yükleniyor...</option>
+                                <!-- Options populated by script -->
                             </select>
                         </div>
                     </div>
                     
-                    <div class="p-4 border rounded-lg bg-gray-50">
-                        <h2 class="text-xl font-semibold text-gray-700 border-b pb-2 mb-4">2. Manuel Veri Ekleyin</h2>
+                    <!-- 2. Manuel Veri Ekleme -->
+                    <div class="space-y-4">
+                        <h2 class="text-xl font-semibold text-gray-700 border-b pb-2">2. Manuel Veri Ekleyin</h2>
                         <form id="add-data-form" class="space-y-3">
                             <div>
                                 <label for="price-date" class="block text-sm font-medium text-gray-700 mb-1">Tarih</label>
@@ -56,13 +59,14 @@
                                 Ekle / Güncelle
                             </button>
                         </form>
-                        <div id="status-message" class="text-center p-2 rounded-lg mt-3"></div>
+                        <div id="status-message" class="text-center p-2 rounded-lg"></div>
                     </div>
-
-                    <div class="p-4 border rounded-lg bg-gray-50">
-                        <h2 class="text-xl font-semibold text-gray-700 border-b pb-2 mb-4">3. API ile Veri Güncelleme</h2>
+                    
+                    <!-- 3. API ile Veri Güncelleme -->
+                    <div class="space-y-4">
+                        <h2 class="text-xl font-semibold text-gray-700 border-b pb-2">3. API ile Veri Güncelleme</h2>
                         <div class="space-y-3">
-                            <p class="text-sm text-gray-600"><strong>Tüm varlıkların</strong> son 1 yıllık verisini çekin veya <strong>seçili varlık için</strong> özel tarih aralığı belirleyin.</p>
+                            <p class="text-sm text-gray-600">Tek tıkla <strong>tüm varlıkların</strong> son 1 yıllık verisini çekin veya <strong>seçili varlık için</strong> özel tarih aralığı belirleyin.</p>
                             <button id="sync-all-btn" disabled class="w-full bg-teal-600 text-white font-bold py-3 rounded-lg transition hover:bg-teal-700 disabled:bg-gray-400 flex items-center justify-center">
                                 <span id="sync-btn-text">Tümünü Senkronize Et (Son 1 Yıl)</span>
                                 <div id="sync-loader" class="loader ml-2 hidden"></div>
@@ -70,15 +74,15 @@
                              <button id="fetch-selected-btn" disabled class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg transition hover:bg-blue-700 disabled:bg-gray-400">
                                 Seçili Varlık için Veri Çek
                             </button>
-                            <div id="sync-status" class="text-center p-2 rounded-lg text-sm mt-2"></div>
+                            <div id="sync-status" class="text-center p-2 rounded-lg text-sm"></div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Orta Sütun: Kayıtlı Veriler -->
-                <div class="md:col-span-1 p-4 border rounded-lg bg-gray-50">
-                     <h2 class="text-xl font-semibold text-gray-700 border-b pb-2 mb-4">Kayıtlı Fiyat Verileri</h2>
-                     <div class="border rounded-lg h-[46rem] overflow-y-auto bg-white">
+                <!-- Orta Sütun: Mevcut Veriler -->
+                <div class="md:col-span-1 space-y-4">
+                     <h2 class="text-xl font-semibold text-gray-700 border-b pb-2">Kayıtlı Veriler</h2>
+                     <div class="border rounded-lg h-[46rem] overflow-y-auto bg-gray-50">
                         <table class="min-w-full">
                             <thead class="bg-gray-200 sticky top-0">
                                 <tr>
@@ -92,30 +96,60 @@
                         </table>
                      </div>
                 </div>
+                
+                 <!-- Sağ Sütun: Varlık Yönetimi ve Import/Export -->
+                <div class="md:col-span-1 space-y-6">
+                    <!-- 4. Kripto Varlık Yönetimi -->
+                    <div class="space-y-4">
+                         <h2 class="text-xl font-semibold text-gray-700 border-b pb-2">4. Kripto Varlık Yönetimi</h2>
+                         <form id="add-asset-form" class="space-y-3">
+                             <div>
+                                 <label for="new-asset-id" class="block text-sm font-medium text-gray-700 mb-1">Yeni Varlık (CoinGecko ID)</label>
+                                 <input type="text" id="new-asset-id" required placeholder="örn: litecoin" class="w-full p-3 border border-gray-300 rounded-lg">
+                             </div>
+                             <button type="submit" id="add-asset-btn" disabled class="w-full bg-purple-600 text-white font-bold py-3 rounded-lg transition hover:bg-purple-700 disabled:bg-gray-400 flex items-center justify-center">
+                                 <span id="add-asset-btn-text">Varlığı Ekle</span>
+                                 <div id="add-asset-loader" class="loader ml-2 hidden"></div>
+                             </button>
+                         </form>
+                         <div id="add-asset-status" class="text-center p-2 rounded-lg"></div>
 
-                <!-- Sağ Sütun: Varlık Yönetimi -->
-                 <div class="md:col-span-1 p-4 border rounded-lg bg-gray-50">
-                    <h2 class="text-xl font-semibold text-gray-700 border-b pb-2 mb-4">4. Kripto Varlık Yönetimi</h2>
-                    <form id="add-crypto-form" class="space-y-3">
-                        <div>
-                            <label for="coingecko-id" class="block text-sm font-medium text-gray-700 mb-1">Yeni Varlık (CoinGecko ID)</label>
-                            <input type="text" id="coingecko-id" required placeholder="Örn: litecoin" class="w-full p-3 border border-gray-300 rounded-lg">
-                            <p class="text-xs text-gray-500 mt-1">Lütfen varlığın <a href="https://www.coingecko.com/" target="_blank" class="text-indigo-600 hover:underline">coingecko.com</a>'daki kimliğini (ID) girin.</p>
+                         <div class="border rounded-lg h-60 overflow-y-auto bg-gray-50">
+                            <table class="min-w-full">
+                                <thead class="bg-gray-200 sticky top-0">
+                                    <tr>
+                                        <th class="py-2 px-4 text-left text-xs font-semibold text-gray-600 uppercase">Varlık</th>
+                                        <th class="py-2 px-4 text-right text-xs font-semibold text-gray-600 uppercase">İşlem</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="asset-list-body" class="divide-y divide-gray-100">
+                                    <!-- Asset list populated by script -->
+                                </tbody>
+                            </table>
+                         </div>
+                    </div>
+                    
+                    <!-- 5. Excel Import/Export -->
+                    <div class="space-y-4">
+                        <h2 class="text-xl font-semibold text-gray-700 border-b pb-2">5. Dışa/İçe Aktar (Excel)</h2>
+                        <div class="space-y-3">
+                            <p class="text-sm text-gray-600">Seçili varlığın tüm geçmiş verisini Excel olarak indirin veya güncellediğiniz Excel dosyasını geri yükleyin.</p>
+                            <button id="export-btn" disabled class="w-full bg-green-600 text-white font-bold py-3 rounded-lg transition hover:bg-green-700 disabled:bg-gray-400">
+                                Export (Excel)
+                            </button>
+                            <div>
+                                <label for="import-file" class="w-full bg-orange-500 text-white font-bold py-3 rounded-lg transition hover:bg-orange-600 disabled:bg-gray-400 cursor-pointer inline-block text-center">
+                                    <span>Import (Excel)</span>
+                                    <input type="file" id="import-file" class="hidden" accept=".xlsx, .xls, .csv">
+                                </label>
+                            </div>
+                            <div id="import-export-status" class="text-center p-2 rounded-lg text-sm"></div>
                         </div>
-                        <button type="submit" id="add-crypto-btn" disabled class="w-full bg-green-600 text-white font-bold py-3 rounded-lg transition hover:bg-green-700 disabled:bg-gray-400 flex items-center justify-center">
-                            <span id="add-crypto-btn-text">Varlığı Ekle</span>
-                            <div id="add-crypto-loader" class="loader ml-2 hidden"></div>
-                        </button>
-                    </form>
-                    <div id="add-crypto-status" class="text-center p-2 rounded-lg mt-3"></div>
-                    <h3 class="font-semibold text-gray-700 mt-6 border-b pb-2">Mevcut Varlıklar</h3>
-                    <div id="managed-assets-list" class="space-y-2 mt-4 max-h-[25rem] overflow-y-auto pr-2">
-                        <!-- List will be populated by script -->
                     </div>
                 </div>
             </div>
              <div class="text-center text-xs text-gray-400 mt-8">
-                <p>Varlık listeniz <code class="bg-gray-200 p-1 rounded">config/supported_cryptos</code>, fiyat verileriniz <code class="bg-gray-200 p-1 rounded">crypto_historical_prices/{varlık_adı}</code> altında saklanmaktadır.</p>
+                <p>Verileriniz Firestore veritabanında saklanmaktadır.</p>
             </div>
         </main>
     </div>
@@ -125,7 +159,7 @@
         <div class="modal-content bg-white rounded-lg shadow-xl p-6 max-w-md w-full transform -translate-y-10">
             <h3 class="text-lg font-bold text-gray-800 mb-4">Veri Çek: <span id="modal-asset-name" class="text-indigo-600"></span></h3>
             <div class="space-y-4">
-                 <div>
+                <div>
                     <label for="end-date" class="block text-sm font-medium text-gray-700">Bitiş Tarihi</label>
                     <input type="date" id="end-date" class="mt-1 w-full p-2 border border-gray-300 rounded-lg">
                 </div>
@@ -149,21 +183,19 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getFirestore, doc, onSnapshot, setDoc, updateDoc, deleteField } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { getFirestore, doc, onSnapshot, setDoc, getDoc, deleteField } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
     const COINGECKO_API_URL = 'https://api.coingecko.com/api/v3';
-    
-    // Silinemeyen ve otomatik eklenen ana varlıklar
-    const MAIN_ASSETS = ['bitcoin', 'ethereum', 'tether-gold', 'solana', 'ripple', 'cardano']; 
-    const MAIN_ASSETS_DETAILS = {
-        'bitcoin': { name: 'Bitcoin', symbol: 'BTC' },
-        'ethereum': { name: 'Ethereum', symbol: 'ETH' },
-        'tether-gold': { name: 'Tether Gold', symbol: 'XAUT' },
-        'solana': { name: 'Solana', symbol: 'SOL' },
-        'ripple': { name: 'XRP', symbol: 'XRP' },
-        'cardano': { name: 'Cardano', symbol: 'ADA' },
+    let DYNAMIC_CRYPTO_INFO = {};
+    const BASE_ASSETS = {
+        'bitcoin': { name: 'Bitcoin', symbol: 'BTC', isBase: true },
+        'ethereum': { name: 'Ethereum', symbol: 'ETH', isBase: true },
+        'tether-gold': { name: 'Tether Gold', symbol: 'XAUT', isBase: true },
+        'solana': { name: 'Solana', symbol: 'SOL', isBase: true },
+        'ripple': { name: 'XRP', symbol: 'XRP', isBase: true },
+        'cardano': { name: 'Cardano', symbol: 'ADA', isBase: true },
     };
-    
+
     // DOM Elements
     const cryptoSelect = document.getElementById('crypto-select');
     const historyTableBody = document.getElementById('history-table-body');
@@ -178,6 +210,17 @@
     const syncLoader = document.getElementById('sync-loader');
     const syncStatus = document.getElementById('sync-status');
     const fetchSelectedBtn = document.getElementById('fetch-selected-btn');
+    const addAssetForm = document.getElementById('add-asset-form');
+    const newAssetInput = document.getElementById('new-asset-id');
+    const addAssetBtn = document.getElementById('add-asset-btn');
+    const addAssetBtnText = document.getElementById('add-asset-btn-text');
+    const addAssetLoader = document.getElementById('add-asset-loader');
+    const addAssetStatus = document.getElementById('add-asset-status');
+    const assetListBody = document.getElementById('asset-list-body');
+    const exportBtn = document.getElementById('export-btn');
+    const importFile = document.getElementById('import-file');
+    const importExportStatus = document.getElementById('import-export-status');
+
 
     // Modal elements
     const fetchModal = document.getElementById('fetch-modal');
@@ -190,20 +233,9 @@
     const fetchBtnText = document.getElementById('fetch-btn-text');
     const fetchLoader = document.getElementById('fetch-loader');
 
-    // Asset Management elements
-    const addCryptoForm = document.getElementById('add-crypto-form');
-    const coingeckoIdInput = document.getElementById('coingecko-id');
-    const addCryptoBtn = document.getElementById('add-crypto-btn');
-    const addCryptoBtnText = document.getElementById('add-crypto-btn-text');
-    const addCryptoLoader = document.getElementById('add-crypto-loader');
-    const addCryptoStatus = document.getElementById('add-crypto-status');
-    const managedAssetsList = document.getElementById('managed-assets-list');
-
     let db;
-    let currentUnsubscribeHistory = null;
-    let CRYPTO_INFO = {}; // Dinamik olarak dolacak
-    let configDocRef;
-
+    let currentHistoryUnsubscribe = null;
+    let currentConfigUnsubscribe = null;
 
     async function setupFirebase() {
         try {
@@ -217,138 +249,110 @@
             };
             const app = initializeApp(firebaseConfig);
             db = getFirestore(app);
-            configDocRef = doc(db, "config", "supported_cryptos");
-            
-            listenToCryptoConfig(); // Varlık listesini dinlemeye başla
-
             authStatus.textContent = "Veritabanı bağlantısı başarılı!";
             authStatus.classList.replace('bg-blue-100', 'bg-green-100');
             authStatus.classList.replace('text-blue-800', 'text-green-800');
-            
-            // Butonları aktif et
-            [saveBtn, syncAllBtn, fetchSelectedBtn, addCryptoBtn].forEach(btn => btn.disabled = false);
-
+            [saveBtn, syncAllBtn, fetchSelectedBtn, addAssetBtn, exportBtn].forEach(btn => btn.disabled = false);
         } catch (error) {
             console.error("Firebase initialization failed:", error);
             authStatus.textContent = `Veritabanı hatası: ${error.message}`;
             authStatus.classList.replace('bg-blue-100', 'bg-red-100');
             authStatus.classList.replace('text-blue-800', 'text-red-800');
+            [saveBtn, syncAllBtn, fetchSelectedBtn, addAssetBtn, exportBtn].forEach(btn => btn.disabled = true);
+        }
+    }
+    
+    async function initializeBaseAssets() {
+        if (!db) return;
+        const configDocRef = doc(db, "config", "supported_cryptos");
+        const docSnap = await getDoc(configDocRef);
+        let existingData = {};
+        if (docSnap.exists()) {
+            existingData = docSnap.data();
+        }
+        
+        const updates = {};
+        let needsUpdate = false;
+        for (const id in BASE_ASSETS) {
+            if (!existingData[id]) {
+                updates[id] = BASE_ASSETS[id];
+                needsUpdate = true;
+            }
+        }
+        
+        if (needsUpdate) {
+            console.log("Temel varlıklar veritabanına ekleniyor...");
+            await setDoc(configDocRef, updates, { merge: true });
         }
     }
 
-    // Firestore'dan varlık listesini dinle ve eksik ana varlıkları ekle
     function listenToCryptoConfig() {
-        onSnapshot(configDocRef, async (docSnap) => {
-            let currentConfig = {};
-            let needsUpdate = false;
+        if (currentConfigUnsubscribe) { currentConfigUnsubscribe(); }
+        const configDocRef = doc(db, "config", "supported_cryptos");
 
-            if (docSnap.exists() && Object.keys(docSnap.data()).length > 0) {
-                currentConfig = docSnap.data();
-            }
-
-            // Ana varlıkların listede olup olmadığını kontrol et
-            for (const assetId of MAIN_ASSETS) {
-                if (!currentConfig[assetId]) {
-                    console.log(`Ana varlık eksik: ${assetId}. Ekleniyor...`);
-                    currentConfig[assetId] = MAIN_ASSETS_DETAILS[assetId];
-                    needsUpdate = true;
-                }
-            }
-
-            // Döküman yoksa veya güncellenmesi gerekiyorsa, Firestore'a yaz
-            if (needsUpdate || !docSnap.exists()) {
-                try {
-                    // merge: true, kullanıcı tarafından eklenen diğer varlıkları korur
-                    await setDoc(configDocRef, currentConfig, { merge: true }); 
-                } catch (error) {
-                    console.error("Ana varlıkları yapılandırmaya eklerken hata:", error);
-                }
-            }
-            
-            CRYPTO_INFO = currentConfig;
-
-            // Arayüzü en güncel veriyle yeniden oluştur
-            populateCryptoSelect();
-            renderManagedAssets();
-            
-            if (cryptoSelect.value) {
-                listenToHistory(cryptoSelect.value);
+        currentConfigUnsubscribe = onSnapshot(configDocRef, (docSnap) => {
+            if (docSnap.exists()) {
+                DYNAMIC_CRYPTO_INFO = docSnap.data();
+                populateCryptoSelect();
+                populateAssetList();
+            } else {
+                console.log("Config document created for the first time.");
             }
         }, (error) => {
-            console.error("Config listener error:", error);
-            showStatus(addCryptoStatus, "Varlık listesi yüklenemedi!", true, false);
+            console.error("Error listening to crypto config:", error);
+            showStatus(addAssetStatus, "Varlık listesi dinlenemedi.", true, true);
         });
     }
 
     function populateCryptoSelect() {
-        const currentSelection = cryptoSelect.value;
-        cryptoSelect.innerHTML = ''; // Listeyi temizle
-        const sortedIds = Object.keys(CRYPTO_INFO).sort((a,b) => CRYPTO_INFO[a].name.localeCompare(CRYPTO_INFO[b].name));
+        const currentVal = cryptoSelect.value;
+        cryptoSelect.innerHTML = '';
+        const sortedIds = Object.keys(DYNAMIC_CRYPTO_INFO).sort((a,b) => DYNAMIC_CRYPTO_INFO[a].name.localeCompare(DYNAMIC_CRYPTO_INFO[b].name));
         
-        if (sortedIds.length === 0) {
-            cryptoSelect.innerHTML = '<option>Eklenmiş varlık yok.</option>';
-            return;
-        }
-
         sortedIds.forEach(id => {
             const option = document.createElement('option');
             option.value = id;
-            option.textContent = `${CRYPTO_INFO[id].name} (${CRYPTO_INFO[id].symbol})`;
+            option.textContent = `${DYNAMIC_CRYPTO_INFO[id].name} (${DYNAMIC_CRYPTO_INFO[id].symbol})`;
             cryptoSelect.appendChild(option);
         });
+        
+        if (sortedIds.includes(currentVal)) {
+            cryptoSelect.value = currentVal;
+        }
 
-        // Eğer önceki seçim hala listede varsa, onu tekrar seç
-        if (CRYPTO_INFO[currentSelection]) {
-            cryptoSelect.value = currentSelection;
-        } else if (sortedIds.length > 0) {
-            // Değilse, listenin ilk elemanını seç ve geçmişini yükle
-            listenToHistory(sortedIds[0]);
+        if (cryptoSelect.value) {
+            listenToHistory(cryptoSelect.value);
         }
     }
 
-    function renderManagedAssets() {
-        managedAssetsList.innerHTML = '';
-        const sortedIds = Object.keys(CRYPTO_INFO).sort((a,b) => CRYPTO_INFO[a].name.localeCompare(CRYPTO_INFO[b].name));
-
-        if (sortedIds.length === 0) {
-            managedAssetsList.innerHTML = '<p class="text-sm text-gray-500 text-center">Yönetilen varlık yok.</p>';
-            return;
-        }
+    function populateAssetList() {
+        assetListBody.innerHTML = '';
+        const sortedIds = Object.keys(DYNAMIC_CRYPTO_INFO).sort((a,b) => DYNAMIC_CRYPTO_INFO[a].name.localeCompare(DYNAMIC_CRYPTO_INFO[b].name));
 
         sortedIds.forEach(id => {
-            const asset = CRYPTO_INFO[id];
-            const isMainAsset = MAIN_ASSETS.includes(id);
-            const div = document.createElement('div');
-            div.className = 'flex items-center justify-between p-2 bg-white border rounded-lg';
-            
-            const deleteButtonHtml = isMainAsset
-                ? `<button disabled title="Ana varlıklar silinemez." class="text-gray-400 cursor-not-allowed text-sm font-semibold">Sil</button>`
-                : `<button data-id="${id}" class="delete-asset-btn text-red-500 hover:text-red-700 text-sm font-semibold">Sil</button>`;
-
-            div.innerHTML = `
-                <div class="flex items-center">
-                    ${isMainAsset ? '<span title="Ana Varlık" class="mr-2 text-amber-500">⭐</span>' : ''}
-                    <div class="flex flex-col">
-                        <span class="font-medium text-sm">${asset.name} (${asset.symbol})</span>
-                        <span class="text-xs text-gray-400">ID: ${id}</span>
-                    </div>
-                </div>
-                ${deleteButtonHtml}
+            const asset = DYNAMIC_CRYPTO_INFO[id];
+            const isBase = asset.isBase || false;
+            const row = `
+                <tr class="hover:bg-gray-100">
+                    <td class="py-2 px-4 text-sm text-gray-700">${asset.name} ${isBase ? '⭐' : ''}</td>
+                    <td class="py-2 px-4 text-right">
+                        <button data-id="${id}" class="delete-asset-btn text-red-500 hover:text-red-700 disabled:text-gray-400" ${isBase ? 'disabled title="Ana varlık silinemez"' : ''}>Sil</button>
+                    </td>
+                </tr>
             `;
-            managedAssetsList.appendChild(div);
+            assetListBody.innerHTML += row;
         });
     }
 
-
     function listenToHistory(cryptoId) {
-        if (currentUnsubscribeHistory) { currentUnsubscribeHistory(); }
-        if (!db || !cryptoId) {
-            historyTableBody.innerHTML = `<tr><td colspan="2" class="text-center p-8 text-gray-500">Lütfen bir varlık seçin.</td></tr>`;
+        if (currentHistoryUnsubscribe) { currentHistoryUnsubscribe(); }
+        if (!db) {
+            historyTableBody.innerHTML = `<tr><td colspan="2" class="text-center p-8 text-red-500">Veritabanı bağlantısı yok.</td></tr>`;
             return;
         }
         const docRef = doc(db, `crypto_historical_prices/${cryptoId}`);
         historyTableBody.innerHTML = `<tr><td colspan="2" class="text-center p-8 text-gray-500">Veriler yükleniyor...</td></tr>`;
-        currentUnsubscribeHistory = onSnapshot(docRef, (doc) => {
+        currentHistoryUnsubscribe = onSnapshot(docRef, (doc) => {
             historyTableBody.innerHTML = '';
             if (doc.exists() && doc.data().prices) {
                 const prices = doc.data().prices;
@@ -384,7 +388,12 @@
             showStatus(statusMessage, "Lütfen tüm alanları doldurun.", true, true);
             return;
         }
-        setLoadingState(saveBtn, true, "Kaydediliyor...");
+        if (!db) {
+            showStatus(statusMessage, "Veritabanı bağlantısı yok.", true, true);
+            return;
+        }
+        saveBtn.disabled = true;
+        saveBtn.textContent = "Kaydediliyor...";
         const docRef = doc(db, `crypto_historical_prices/${cryptoId}`);
         const dataToUpdate = { [`prices.${date}`]: price };
         try {
@@ -395,77 +404,71 @@
             console.error("Veri kaydetme hatası:", error);
             showStatus(statusMessage, `Hata: ${error.message}`, true, true);
         } finally {
-             setLoadingState(saveBtn, false, "Ekle / Güncelle");
+             saveBtn.disabled = false;
+             saveBtn.textContent = "Ekle / Güncelle";
         }
     }
     
-    // YENİ: Kripto Varlık Ekleme
-    async function handleAddCryptoSubmit(e) {
+    async function handleAddAsset(e) {
         e.preventDefault();
-        const newId = coingeckoIdInput.value.trim().toLowerCase();
-        if (!newId) {
-            showStatus(addCryptoStatus, "Lütfen bir CoinGecko ID girin.", true, true);
-            return;
-        }
-        if (CRYPTO_INFO[newId]) {
-            showStatus(addCryptoStatus, "Bu varlık zaten listede mevcut.", true, true);
+        const assetId = newAssetInput.value.trim().toLowerCase();
+        if (!assetId) {
+            showStatus(addAssetStatus, "Lütfen bir varlık ID'si girin.", true, true);
             return;
         }
         
-        setLoadingState(addCryptoBtn, true, "Doğrulanıyor...", addCryptoLoader, addCryptoBtnText);
-        showStatus(addCryptoStatus, "Varlık CoinGecko'dan doğrulanıyor...", false, false);
+        setAddAssetLoading(true);
 
         try {
-            const response = await fetch(`${COINGECKO_API_URL}/coins/${newId}`);
+            // Check if asset exists on CoinGecko
+            const response = await fetch(`${COINGECKO_API_URL}/coins/${assetId}`);
             if (!response.ok) {
-                throw new Error("Varlık bulunamadı veya API hatası.");
+                throw new Error("Varlık CoinGecko'da bulunamadı veya API hatası.");
             }
             const data = await response.json();
-            const { name, symbol } = data;
-
-            if (!name || !symbol) {
-                throw new Error("API'den geçersiz veri alındı.");
-            }
             
-            showStatus(addCryptoStatus, "Varlık doğrulandı, veritabanına ekleniyor...", false, false);
-            const dataToUpdate = { [newId]: { name, symbol: symbol.toUpperCase() } };
-            await updateDoc(configDocRef, dataToUpdate);
+            const newAssetData = {
+                name: data.name,
+                symbol: data.symbol.toUpperCase(),
+                isBase: false
+            };
 
-            showStatus(addCryptoStatus, `${name} başarıyla eklendi!`, false, true);
-            coingeckoIdInput.value = '';
+            const configDocRef = doc(db, "config", "supported_cryptos");
+            await setDoc(configDocRef, { [assetId]: newAssetData }, { merge: true });
+            
+            showStatus(addAssetStatus, `${data.name} başarıyla eklendi!`, false, true);
+            newAssetInput.value = '';
 
         } catch (error) {
-            console.error("Varlık ekleme hatası:", error);
-            showStatus(addCryptoStatus, `Hata: ${error.message}`, true, true);
+             console.error("Varlık ekleme hatası:", error);
+             showStatus(addAssetStatus, `Hata: ${error.message}`, true, true);
         } finally {
-            setLoadingState(addCryptoBtn, false, "Varlığı Ekle", addCryptoLoader, addCryptoBtnText);
+            setAddAssetLoading(false);
         }
     }
     
-    // YENİ: Kripto Varlık Silme
-    async function handleDeleteCrypto(cryptoId) {
-        if (MAIN_ASSETS.includes(cryptoId)) {
-            showStatus(addCryptoStatus, "Ana varlıklar silinemez.", true, true);
-            return;
-        }
-        if (!confirm(`${CRYPTO_INFO[cryptoId].name} varlığını silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`)) {
-            return;
-        }
-        try {
-            await updateDoc(configDocRef, {
-                [cryptoId]: deleteField()
-            });
-            showStatus(addCryptoStatus, "Varlık başarıyla silindi.", false, true);
-        } catch(error) {
-            console.error("Varlık silme hatası:", error);
-            showStatus(addCryptoStatus, `Hata: ${error.message}`, true, true);
+    async function handleDeleteAsset(e) {
+        if (!e.target.classList.contains('delete-asset-btn')) return;
+        
+        const assetId = e.target.dataset.id;
+        if (!assetId || DYNAMIC_CRYPTO_INFO[assetId]?.isBase) return;
+
+        if (confirm(`${DYNAMIC_CRYPTO_INFO[assetId].name} varlığını silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`)) {
+            try {
+                const configDocRef = doc(db, "config", "supported_cryptos");
+                await setDoc(configDocRef, { [assetId]: deleteField() }, { merge: true });
+                showStatus(addAssetStatus, "Varlık başarıyla silindi.", false, true);
+            } catch (error) {
+                console.error("Varlık silme hatası:", error);
+                showStatus(addAssetStatus, `Hata: ${error.message}`, true, true);
+            }
         }
     }
 
 
     async function syncAllAssets() {
-        setSyncLoading(true, 'sync');
-        const assetIds = Object.keys(CRYPTO_INFO);
+        setSyncLoading(true);
+        const assetIds = Object.keys(DYNAMIC_CRYPTO_INFO);
         const endDate = new Date();
         const startDate = new Date();
         startDate.setDate(endDate.getDate() - 365);
@@ -474,7 +477,7 @@
 
         for (const cryptoId of assetIds) {
             try {
-                showStatus(syncStatus, `${CRYPTO_INFO[cryptoId].name} verileri çekiliyor...`, false, false);
+                showStatus(syncStatus, `${DYNAMIC_CRYPTO_INFO[cryptoId].name} verileri çekiliyor...`, false, false);
                 const url = `${COINGECKO_API_URL}/coins/${cryptoId}/market_chart/range?vs_currency=try&from=${startTimestamp}&to=${endTimestamp}`;
                 const response = await fetch(url);
                 if (!response.ok) { throw new Error(`API Hatası (${response.status})`); }
@@ -491,16 +494,16 @@
                 });
                 const docRef = doc(db, `crypto_historical_prices/${cryptoId}`);
                 await setDoc(docRef, { prices: pricesToSave });
-                showStatus(syncStatus, `${CRYPTO_INFO[cryptoId].name} başarıyla güncellendi!`, false, false);
-                await new Promise(resolve => setTimeout(resolve, 1000)); // API rate limit için bekleme
+                showStatus(syncStatus, `${DYNAMIC_CRYPTO_INFO[cryptoId].name} başarıyla güncellendi!`, false, false);
+                await new Promise(resolve => setTimeout(resolve, 1500)); 
             } catch (error) {
                 console.error(`${cryptoId} için senkronizasyon hatası:`, error);
-                showStatus(syncStatus, `${CRYPTO_INFO[cryptoId].name} güncellenemedi. Hata: ${error.message}`, true, false);
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                showStatus(syncStatus, `${DYNAMIC_CRYPTO_INFO[cryptoId].name} güncellenemedi. Hata: ${error.message}`, true, false);
+                await new Promise(resolve => setTimeout(resolve, 1500));
             }
         }
         showStatus(syncStatus, "Tüm varlıkların senkronizasyonu tamamlandı!", false, true);
-        setSyncLoading(false, 'sync');
+        setSyncLoading(false);
     }
     
     async function fetchAndSaveForSelectedAsset() {
@@ -513,14 +516,14 @@
             return;
         }
         const startTimestamp = new Date(startDate).getTime() / 1000;
-        const endTimestamp = new Date(endDate).getTime() / 1000 + 86400;
+        const endTimestamp = new Date(endDate).getTime() / 1000 + 86400; // Bitiş gününü dahil et
 
         if (startTimestamp >= endTimestamp) {
             showStatus(fetchStatus, "Başlangıç tarihi bitiş tarihinden sonra olamaz.", true, false);
             return;
         }
 
-        setSyncLoading(true, 'fetch');
+        setFetchLoading(true);
         showStatus(fetchStatus, "Veriler çekiliyor...", false, false);
         
         try {
@@ -531,7 +534,7 @@
 
             if (!data.prices || data.prices.length === 0) {
                  showStatus(fetchStatus, "Belirtilen aralıkta veri bulunamadı.", true, false);
-                 setSyncLoading(false, 'fetch');
+                 setFetchLoading(false);
                  return;
             }
 
@@ -552,9 +555,97 @@
             console.error("Manuel veri çekme hatası:", error);
             showStatus(fetchStatus, `Hata: ${error.message}`, true, false);
         } finally {
-            setSyncLoading(false, 'fetch');
+            setFetchLoading(false);
         }
     }
+    
+    async function exportToExcel() {
+        const cryptoId = cryptoSelect.value;
+        if (!cryptoId || !db) return;
+
+        showStatus(importExportStatus, "Veriler dışa aktarılıyor...", false, false);
+        try {
+            const docRef = doc(db, `crypto_historical_prices/${cryptoId}`);
+            const docSnap = await getDoc(docRef);
+
+            if (!docSnap.exists() || !docSnap.data().prices) {
+                showStatus(importExportStatus, "Dışa aktarılacak veri bulunamadı.", true, true);
+                return;
+            }
+
+            const prices = docSnap.data().prices;
+            const dataForExcel = Object.keys(prices)
+                .map(date => ({ 'Tarih': date, 'Fiyat': prices[date] }))
+                .sort((a, b) => new Date(a.Tarih) - new Date(b.Tarih));
+            
+            const worksheet = XLSX.utils.json_to_sheet(dataForExcel);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Geçmiş Fiyatlar");
+            XLSX.writeFile(workbook, `${cryptoId}_fiyat_geçmişi.xlsx`);
+            showStatus(importExportStatus, "Veriler başarıyla dışa aktarıldı!", false, true);
+
+        } catch(error) {
+            console.error("Export error:", error);
+            showStatus(importExportStatus, `Hata: ${error.message}`, true, true);
+        }
+    }
+
+    function importFromExcel(event) {
+        const cryptoId = cryptoSelect.value;
+        if (!cryptoId || !db) return;
+
+        const file = event.target.files[0];
+        if (!file) return;
+
+        showStatus(importExportStatus, "Dosya okunuyor ve işleniyor...", false, false);
+
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const json = XLSX.utils.sheet_to_json(worksheet, {raw: false});
+
+                if (json.length === 0) {
+                    throw new Error("Excel dosyası boş veya okunamadı.");
+                }
+
+                const pricesToSave = {};
+                for (const row of json) {
+                    const date = row['Tarih'];
+                    const price = parseFloat(row['Fiyat']);
+                    
+                    if (!date || isNaN(price)) {
+                        console.warn("Geçersiz satır atlandı:", row);
+                        continue;
+                    }
+                    
+                    // Tarih formatını YYYY-MM-DD olarak doğrula/dönüştür
+                    const formattedDate = new Date(date).toISOString().split('T')[0];
+                    pricesToSave[formattedDate] = price;
+                }
+
+                if (Object.keys(pricesToSave).length === 0) {
+                    throw new Error("Excel dosyasında geçerli veri bulunamadı. 'Tarih' (YYYY-AA-GG) ve 'Fiyat' sütunları olmalıdır.");
+                }
+                
+                const docRef = doc(db, `crypto_historical_prices/${cryptoId}`);
+                await setDoc(docRef, { prices: pricesToSave }, { merge: true });
+
+                showStatus(importExportStatus, `${Object.keys(pricesToSave).length} satır veri başarıyla içe aktarıldı!`, false, true);
+            
+            } catch (error) {
+                console.error("Import error:", error);
+                showStatus(importExportStatus, `Hata: ${error.message}`, true, true);
+            } finally {
+                importFile.value = ''; // Reset file input
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
 
     function showStatus(element, message, isError, shouldClear) {
         element.textContent = message;
@@ -566,57 +657,41 @@
             }, 5000);
         }
     }
-    
-    function setLoadingState(button, isLoading, loadingText, loader, textElement) {
-        button.disabled = isLoading;
-        const textSpan = textElement || button.querySelector('span');
-        const originalText = button.dataset.originalText || textSpan.textContent;
-        button.dataset.originalText = originalText;
 
-        if (isLoading) {
-            if(textSpan) textSpan.textContent = loadingText;
-            if (loader) loader.classList.remove('hidden');
-        } else {
-            if(textSpan) textSpan.textContent = originalText;
-            if (loader) loader.classList.add('hidden');
-        }
+    function setSyncLoading(isLoading) {
+        syncLoader.classList.toggle('hidden', !isLoading);
+        syncBtnText.classList.toggle('hidden', isLoading);
+        syncAllBtn.disabled = isLoading;
+        saveBtn.disabled = isLoading;
+        cryptoSelect.disabled = isLoading;
+        fetchSelectedBtn.disabled = isLoading;
     }
 
-    function setSyncLoading(isLoading, type) {
-        if (type === 'sync') {
-            syncLoader.classList.toggle('hidden', !isLoading);
-            syncBtnText.classList.toggle('hidden', isLoading);
-            syncAllBtn.disabled = isLoading;
-            [saveBtn, cryptoSelect, fetchSelectedBtn, addCryptoBtn].forEach(el => el.disabled = isLoading);
-        } else if (type === 'fetch') {
-            fetchLoader.classList.toggle('hidden', !isLoading);
-            fetchBtnText.classList.toggle('hidden', isLoading);
-            fetchAndSaveBtn.disabled = isLoading;
-            closeModalBtn.disabled = isLoading;
-        }
+     function setAddAssetLoading(isLoading) {
+        addAssetLoader.classList.toggle('hidden', !isLoading);
+        addAssetBtnText.classList.toggle('hidden', isLoading);
+        addAssetBtn.disabled = isLoading;
     }
     
-    function handleEndDateChange() {
-        const endDate = new Date(endDateInput.value);
-        if (!isNaN(endDate.getTime())) {
-            const startDate = new Date(endDate);
-            startDate.setDate(endDate.getDate() - 365);
-            startDateInput.value = startDate.toISOString().split('T')[0];
-        }
+    function setFetchLoading(isLoading) {
+        fetchLoader.classList.toggle('hidden', !isLoading);
+        fetchBtnText.classList.toggle('hidden', isLoading);
+        fetchAndSaveBtn.disabled = isLoading;
+        closeModalBtn.disabled = isLoading;
     }
 
     function toggleModal(show) {
         if (show) {
             const selectedCryptoId = cryptoSelect.value;
-            modalAssetName.textContent = CRYPTO_INFO[selectedCryptoId].name;
+            modalAssetName.textContent = DYNAMIC_CRYPTO_INFO[selectedCryptoId].name;
             const today = new Date();
             const yesterday = new Date(today);
             yesterday.setDate(today.getDate() - 1);
             
             endDateInput.value = yesterday.toISOString().split('T')[0];
-            handleEndDateChange();
+            endDateInput.dispatchEvent(new Event('change')); // Başlangıç tarihini tetikle
             
-            fetchStatus.className = 'text-center p-2 rounded-lg hidden';
+            fetchStatus.classList.add('hidden');
             fetchModal.classList.remove('hidden');
             setTimeout(() => {
                 fetchModal.classList.remove('opacity-0');
@@ -632,22 +707,28 @@
     // --- Event Listeners ---
     cryptoSelect.addEventListener('change', (e) => listenToHistory(e.target.value));
     addDataForm.addEventListener('submit', handleFormSubmit);
-    addCryptoForm.addEventListener('submit', handleAddCryptoSubmit);
+    addAssetForm.addEventListener('submit', handleAddAsset);
+    assetListBody.addEventListener('click', handleDeleteAsset);
     syncAllBtn.addEventListener('click', syncAllAssets);
     fetchSelectedBtn.addEventListener('click', () => toggleModal(true));
     closeModalBtn.addEventListener('click', () => toggleModal(false));
     fetchAndSaveBtn.addEventListener('click', fetchAndSaveForSelectedAsset);
-    endDateInput.addEventListener('change', handleEndDateChange);
-    managedAssetsList.addEventListener('click', (e) => {
-        if (e.target.classList.contains('delete-asset-btn')) {
-            const cryptoId = e.target.dataset.id;
-            handleDeleteCrypto(cryptoId);
-        }
+    exportBtn.addEventListener('click', exportToExcel);
+    importFile.addEventListener('change', importFromExcel);
+
+    endDateInput.addEventListener('change', () => {
+        const endDate = new Date(endDateInput.value);
+        const startDate = new Date(endDate);
+        startDate.setDate(endDate.getDate() - 365);
+        startDateInput.value = startDate.toISOString().split('T')[0];
     });
+
 
     // --- Initial Setup ---
     document.addEventListener('DOMContentLoaded', async () => {
         await setupFirebase();
+        await initializeBaseAssets();
+        listenToCryptoConfig();
     });
 
 </script>
